@@ -2,11 +2,10 @@
 
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\LocaleController;
+use App\Http\Controllers\QuoteController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-})->name('home');
+Route::get('/', [QuoteController::class, 'index'])->name('home');
 
 Route::get('/locale/{locale}', [LocaleController::class, 'switch'])
     ->whereIn('locale', ['ar', 'en'])
@@ -22,4 +21,12 @@ Route::middleware('guest')->group(function () {
 
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+    // Quick User Quote creation
+    Route::get('/quotes/create/quick', [QuoteController::class, 'createQuick'])->name('quotes.create-quick');
+    Route::post('/quotes/quick', [QuoteController::class, 'storeQuick'])->name('quotes.store-quick');
+
+    // Book Quote creation
+    Route::get('/quotes/create/book', [QuoteController::class, 'createBook'])->name('quotes.create-book');
+    Route::post('/quotes/book', [QuoteController::class, 'storeBook'])->name('quotes.store-book');
 });
