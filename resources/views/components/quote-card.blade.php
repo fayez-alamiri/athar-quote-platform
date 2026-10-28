@@ -28,6 +28,7 @@
 <article
     id="quote-card-{{ $quote->id }}"
     class="editorial-card p-6 flex flex-col justify-between gap-5 h-full"
+    data-quote-card="{{ $quote->id }}"
     data-quote-id="{{ $quote->id }}"
     data-quote-type="{{ $quote->type }}"
     data-quote-text="{{ e($quote->quote_text) }}"
@@ -127,7 +128,7 @@
 
             {{-- Owner Edit / Delete shortcuts when routes exist --}}
             @can('update', $quote)
-                @if (Route::has('my-quotes.edit') && Route::has('my-quotes.destroy'))
+                @if (Route::has('my-quotes.edit'))
                     <div class="flex items-center gap-1.5">
                         <a
                             href="{{ route('my-quotes.edit', $quote) }}"
@@ -140,37 +141,26 @@
             @endcan
         </div>
 
-        {{-- Core Quote Actions: Copy, Like, Save, Share --}}
+        {{-- Core Quote Actions: Like, Save, Copy, Share --}}
         <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
             <div class="flex items-center gap-1.5">
                 {{-- Like Control --}}
                 @auth
-                    @if (Route::has('quotes.like.toggle'))
-                        <form method="POST" action="{{ route('quotes.like.toggle', $quote) }}" data-like-form="{{ $quote->id }}">
-                            @csrf
-                            <button
-                                type="submit"
-                                aria-pressed="{{ $isLiked ? 'true' : 'false' }}"
-                                class="px-3 py-1.5 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 transition-all cursor-pointer {{ $isLiked ? 'bg-[#4A3328] text-[#FFFEFA] dark:bg-[#C9A66B] dark:text-[#211A16]' : 'btn-editorial-secondary' }}"
-                            >
-                                <svg class="w-3.5 h-3.5 {{ $isLiked ? 'fill-current' : 'fill-none' }}" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
-                                </svg>
-                                <span data-like-count="{{ $quote->id }}">{{ $likesCount }}</span>
-                            </button>
-                        </form>
-                    @else
+                    <form method="POST" action="{{ route('quotes.like.toggle', $quote) }}" data-like-form="{{ $quote->id }}">
+                        @csrf
                         <button
-                            type="button"
-                            class="px-3 py-1.5 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 btn-editorial-secondary"
-                            title="{{ __('Like') }}"
+                            type="submit"
+                            data-like-button="{{ $quote->id }}"
+                            aria-pressed="{{ $isLiked ? 'true' : 'false' }}"
+                            aria-label="{{ __('Like') }}"
+                            class="px-3 py-1.5 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 transition-all cursor-pointer {{ $isLiked ? 'bg-[#4A3328] text-[#FFFEFA] dark:bg-[#C9A66B] dark:text-[#211A16]' : 'btn-editorial-secondary' }}"
                         >
-                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <svg data-like-icon="{{ $quote->id }}" class="w-3.5 h-3.5 {{ $isLiked ? 'fill-current' : 'fill-none' }}" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
                             </svg>
-                            <span>{{ $likesCount }}</span>
+                            <span data-like-count="{{ $quote->id }}">{{ $likesCount }}</span>
                         </button>
-                    @endif
+                    </form>
                 @else
                     <button
                         type="button"
@@ -187,31 +177,22 @@
 
                 {{-- Save / Bookmark Control --}}
                 @auth
-                    @if (Route::has('quotes.save.toggle'))
-                        <form method="POST" action="{{ route('quotes.save.toggle', $quote) }}" data-save-form="{{ $quote->id }}">
-                            @csrf
-                            <button
-                                type="submit"
-                                aria-pressed="{{ $isSaved ? 'true' : 'false' }}"
-                                class="px-3 py-1.5 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 transition-all cursor-pointer {{ $isSaved ? 'bg-[#B99A68] text-[#2B1D17]' : 'btn-editorial-secondary' }}"
-                            >
-                                <svg class="w-3.5 h-3.5 {{ $isSaved ? 'fill-current' : 'fill-none' }}" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
-                                </svg>
-                                <span>{{ $isSaved ? __('Saved') : __('Save') }}</span>
-                            </button>
-                        </form>
-                    @else
+                    <form method="POST" action="{{ route('quotes.save.toggle', $quote) }}" data-save-form="{{ $quote->id }}">
+                        @csrf
                         <button
-                            type="button"
-                            class="px-3 py-1.5 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 btn-editorial-secondary"
+                            type="submit"
+                            data-save-button="{{ $quote->id }}"
+                            data-label-save="{{ __('Save') }}"
+                            data-label-saved="{{ __('Saved') }}"
+                            aria-pressed="{{ $isSaved ? 'true' : 'false' }}"
+                            class="px-3 py-1.5 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 transition-all cursor-pointer {{ $isSaved ? 'bg-[#B99A68] text-[#2B1D17]' : 'btn-editorial-secondary' }}"
                         >
-                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <svg data-save-icon="{{ $quote->id }}" class="w-3.5 h-3.5 {{ $isSaved ? 'fill-current' : 'fill-none' }}" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
                             </svg>
-                            <span>{{ $isSaved ? __('Saved') : __('Save') }}</span>
+                            <span data-save-label="{{ $quote->id }}">{{ $isSaved ? __('Saved') : __('Save') }}</span>
                         </button>
-                    @endif
+                    </form>
                 @else
                     <button
                         type="button"

@@ -5,6 +5,7 @@
  *  - Mobile navigation drawer & Account dropdown menu
  *  - Accessible Modal dialogs & Guest Sign-In prompt modal
  *  - Clipboard copy action with localized toast feedback
+ *  - Progressive AJAX Like/Unlike and Save/Unsave handlers with double-click lock & error recovery
  */
 
 const STORAGE_THEME_KEY = 'quoteit_theme';
@@ -150,6 +151,148 @@ function promptGuestAuth() {
     openModal('guest-auth-modal');
 }
 
+function getCsrfToken(form) {
+    const formToken = form?.querySelector('input[name="_token"]')?.value;
+    if (formToken) return formToken;
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+}
+
+async function handleLikeFormSubmit(form, e) {
+    e.preventDefault();
+    if (form.dataset.submitting === 'true') return;
+
+    const quoteId = form.getAttribute('data-like-form');
+    const button = form.querySelector('[data-like-button]');
+    form.dataset.submitting = 'true';
+    if (button) button.disabled = true;
+
+    try {
+        const response = await fetch(form.action, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': getCsrfToken(form),
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
+
+        if (response.status === 401) {
+            promptGuestAuth();
+            return;
+        }
+
+        if (!response.ok) {
+            throw new Error('Request failed');
+        }
+
+        const data = await response.json();
+        const isLiked = Boolean(data.liked);
+
+        document.querySelectorAll(`[data-like-button="${quoteId}"]`).forEach((btn) => {
+            btn.setAttribute('aria-pressed', isLiked ? 'true' : 'false');
+            btn.className = [
+                'px-3 py-1.5 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 transition-all cursor-pointer',
+                isLiked
+                    ? 'bg-[#4A3328] text-[#FFFEFA] dark:bg-[#C9A66B] dark:text-[#211A16]'
+                    : 'btn-editorial-secondary',
+            ].join(' ');
+        });
+
+        document.querySelectorAll(`[data-like-icon="${quoteId}"]`).forEach((icon) => {
+            icon.classList.toggle('fill-current', isLiked);
+            icon.classList.toggle('fill-none', !isLiked);
+        });
+
+        document.querySelectorAll(`[data-like-count="${quoteId}"]`).forEach((countEl) => {
+            countEl.textContent = String(data.likes_count ?? 0);
+        });
+
+        if (data.message) {
+            showToast(data.message, 'success');
+        }
+    } catch (error) {
+        form.submit();
+    } finally {
+        form.dataset.submitting = 'false';
+        if (button) button.disabled = false;
+    }
+}
+
+async function handleSaveFormSubmit(form, e) {
+    e.preventDefault();
+    if (form.dataset.submitting === 'true') return;
+
+    const quoteId = form.getAttribute('data-save-form');
+    const button = form.querySelector('[data-save-button]');
+    form.dataset.submitting = 'true';
+    if (button) button.disabled = true;
+
+    try {
+        const response = await fetch(form.action, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': getCsrfToken(form),
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
+
+        if (response.status === 401) {
+            promptGuestAuth();
+            return;
+        }
+
+        if (!response.ok) {
+            throw new Error('Request failed');
+        }
+
+        const data = await response.json();
+        const isSaved = Boolean(data.saved);
+
+        document.querySelectorAll(`[data-save-button="${quoteId}"]`).forEach((btn) => {
+            btn.setAttribute('aria-pressed', isSaved ? 'true' : 'false');
+            btn.className = [
+                'px-3 py-1.5 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 transition-all cursor-pointer',
+                isSaved ? 'bg-[#B99A68] text-[#2B1D17]' : 'btn-editorial-secondary',
+            ].join(' ');
+        });
+
+        document.querySelectorAll(`[data-save-icon="${quoteId}"]`).forEach((icon) => {
+            icon.classList.toggle('fill-current', isSaved);
+            icon.classList.toggle('fill-none', !isSaved);
+        });
+
+        document.querySelectorAll(`[data-save-label="${quoteId}"]`).forEach((labelEl) => {
+            labelEl.textContent = data.label || (isSaved ? 'Saved' : 'Save');
+        });
+
+        // If unsaved from the private Saved Quotes page, remove the card smoothly
+        const savedPageGrid = document.querySelector('[data-saved-page-grid]');
+        if (savedPageGrid && !isSaved) {
+            const card = document.getElementById(`quote-card-${quoteId}`);
+            if (card) {
+                card.style.opacity = '0';
+                card.style.transform = 'scale(0.96)';
+                setTimeout(() => {
+                    card.remove();
+                    if (savedPageGrid.querySelectorAll('[data-quote-card]').length === 0) {
+                        window.location.reload();
+                    }
+                }, 180);
+            }
+        }
+
+        if (data.message) {
+            showToast(data.message, 'success');
+        }
+    } catch (error) {
+        form.submit();
+    } finally {
+        form.dataset.submitting = 'false';
+        if (button) button.disabled = false;
+    }
+}
+
 // Expose global helper namespace for inline/progressive handlers
 window.QuoteItUI = {
     toggleTheme,
@@ -199,6 +342,20 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // Progressive AJAX handling for Like and Save forms
+    document.addEventListener('submit', (e) => {
+        const likeForm = e.target.closest('form[data-like-form]');
+        if (likeForm) {
+            handleLikeFormSubmit(likeForm, e);
+            return;
+        }
+
+        const saveForm = e.target.closest('form[data-save-form]');
+        if (saveForm) {
+            handleSaveFormSubmit(saveForm, e);
+        }
+    });
 
     // Bind declarative modal triggers
     document.addEventListener('click', (e) => {
