@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\LocaleController;
+use App\Http\Controllers\MyQuoteController;
 use App\Http\Controllers\QuoteController;
 use App\Http\Controllers\QuoteLikeController;
 use App\Http\Controllers\SavedQuoteController;
@@ -36,4 +38,16 @@ Route::middleware('auth')->group(function () {
     Route::post('/quotes/{quote}/like', [QuoteLikeController::class, 'toggle'])->name('quotes.like.toggle');
     Route::post('/quotes/{quote}/save', [SavedQuoteController::class, 'toggle'])->name('quotes.save.toggle');
     Route::get('/saved-quotes', [SavedQuoteController::class, 'index'])->name('saved.index');
+
+    // My Account & Avatar Management
+    Route::get('/account', [AccountController::class, 'show'])->name('account.show');
+    Route::post('/account/avatar', [AccountController::class, 'updateAvatar'])->name('account.avatar.update');
+    Route::delete('/account/avatar', [AccountController::class, 'destroyAvatar'])->name('account.avatar.destroy');
+
+    // My Quotes Management (Edit, Delete Single, Delete All Own Posts)
+    Route::get('/my-quotes', [MyQuoteController::class, 'index'])->name('my-quotes.index');
+    Route::delete('/my-quotes', [MyQuoteController::class, 'destroyAll'])->name('my-quotes.destroy-all');
+    Route::get('/my-quotes/{quote}/edit', [MyQuoteController::class, 'edit'])->name('my-quotes.edit');
+    Route::put('/my-quotes/{quote}', [MyQuoteController::class, 'update'])->name('my-quotes.update');
+    Route::delete('/my-quotes/{quote}', [MyQuoteController::class, 'destroy'])->name('my-quotes.destroy');
 });

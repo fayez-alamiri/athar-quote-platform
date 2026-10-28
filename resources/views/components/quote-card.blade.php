@@ -23,6 +23,7 @@
     // Detect if quote text is predominantly Arabic or Latin for natural reading alignment
     $isArabicText = preg_match('/\p{Arabic}/u', (string) $quote->quote_text) === 1;
     $quoteTextDir = $isArabicText ? 'rtl' : 'ltr';
+    $deleteModalId = 'delete-quote-modal-' . $quote->id;
 @endphp
 
 <article
@@ -126,18 +127,24 @@
                 </div>
             </div>
 
-            {{-- Owner Edit / Delete shortcuts when routes exist --}}
+            {{-- Owner Edit & Delete Controls (Protected by QuotePolicy) --}}
             @can('update', $quote)
-                @if (Route::has('my-quotes.edit'))
-                    <div class="flex items-center gap-1.5">
-                        <a
-                            href="{{ route('my-quotes.edit', $quote) }}"
-                            class="px-2.5 py-1 rounded-lg text-xs font-medium btn-editorial-secondary"
-                        >
-                            {{ __('Edit') }}
-                        </a>
-                    </div>
-                @endif
+                <div class="flex items-center gap-1.5 shrink-0">
+                    <a
+                        href="{{ route('my-quotes.edit', $quote) }}"
+                        class="px-2.5 py-1 rounded-lg text-xs font-semibold btn-editorial-secondary"
+                    >
+                        {{ __('Edit') }}
+                    </a>
+
+                    <button
+                        type="button"
+                        data-modal-open="{{ $deleteModalId }}"
+                        class="px-2.5 py-1 rounded-lg text-xs font-semibold btn-editorial-secondary text-red-700 dark:text-red-400 hover:border-red-500 cursor-pointer"
+                    >
+                        {{ __('Delete') }}
+                    </button>
+                </div>
             @endcan
         </div>
 
@@ -240,4 +247,37 @@
             </div>
         </div>
     </div>
+
+    {{-- Individual Quote Deletion Confirmation Modal (Rendered only for the quote owner) --}}
+    @can('delete', $quote)
+        <x-modal :id="$deleteModalId" :title="__('Delete Quote')">
+            <div class="space-y-4">
+                <p class="text-sm text-editorial-secondary leading-relaxed">
+                    {{ __('Are you sure you want to permanently delete this quote? This action cannot be undone.') }}
+                </p>
+
+                <blockquote class="p-3.5 rounded-xl bg-editorial-secondary/60 border border-editorial font-editorial text-sm text-editorial-heading line-clamp-3">
+                    “{{ $quote->quote_text }}”
+                </blockquote>
+
+                <div class="flex items-center justify-end gap-3 pt-2">
+                    <button
+                        type="button"
+                        data-modal-close="{{ $deleteModalId }}"
+                        class="px-4 py-2 rounded-xl text-xs font-semibold btn-editorial-secondary cursor-pointer"
+                    >
+                        {{ __('Cancel') }}
+                    </button>
+
+                    <form method="POST" action="{{ route('my-quotes.destroy', $quote) }}">
+                        @csrf
+                        @method('DELETE')
+                        <x-button type="submit" variant="danger" size="sm">
+                            {{ __('Confirm Delete') }}
+                        </x-button>
+                    </form>
+                </div>
+            </div>
+        </x-modal>
+    @endcan
 </article>

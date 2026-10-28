@@ -18,18 +18,24 @@
         ->take(2)
         ->implode('');
 
-    $avatarUrl = null;
-    if ($user && !empty($user->avatar_path)) {
-        $avatarUrl = asset('storage/' . ltrim($user->avatar_path, '/'));
-    }
+    $avatarUrl = $user && method_exists($user, 'avatarUrl') ? $user->avatarUrl() : null;
 @endphp
 
 @if ($avatarUrl)
-    <img
-        src="{{ $avatarUrl }}"
-        alt="{{ $name }}"
-        class="{{ $dimensions }} rounded-full object-cover border border-editorial shrink-0"
-    >
+    <span class="inline-flex items-center justify-center shrink-0">
+        <img
+            src="{{ $avatarUrl }}"
+            alt="{{ $name }}"
+            class="{{ $dimensions }} rounded-full object-cover border border-editorial shrink-0"
+            onerror="this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden');"
+        >
+        <span
+            class="hidden {{ $dimensions }} rounded-full bg-[#4A3328] dark:bg-[#C9A66B] text-[#FFFEFA] dark:text-[#211A16] font-bold items-center justify-center select-none shrink-0"
+            aria-hidden="true"
+        >
+            {{ $initials ?: 'Q' }}
+        </span>
+    </span>
 @else
     <span
         class="{{ $dimensions }} rounded-full bg-[#4A3328] dark:bg-[#C9A66B] text-[#FFFEFA] dark:text-[#211A16] font-bold inline-flex items-center justify-center select-none shrink-0"
