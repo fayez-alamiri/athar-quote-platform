@@ -2,20 +2,40 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Database\Factories\UserFactory;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Schema;
 
-#[Fillable(['name', 'email', 'password'])]
-#[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
-    /** @use HasFactory<UserFactory> */
+    /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var list<string>
+     */
+    protected $fillable = [
+        'name',
+        'email',
+        'password',
+        'avatar_path',
+        'locale',
+    ];
+
+    /**
+     * The attributes that should be hidden for serialization.
+     *
+     * @var list<string>
+     */
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
 
     /**
      * Get the attributes that should be cast.
@@ -28,5 +48,73 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * All quotes (quick and book) published by this user account.
+     */
+    public function quotes(): HasMany
+    {
+        return $this->hasMany(Quote::class);
+    }
+
+    /**
+     * Direct like pivot records created by this user.
+     */
+    public function quoteLikes(): HasMany
+    {
+        return $this->hasMany(QuoteLike::class);
+    }
+
+    /**
+     * Quotes liked by this user.
+     */
+    public function likedQuotes(): BelongsToMany
+    {
+        return $this->belongsToMany(Quote::class, 'quote_likes')
+            ->withTimestamps();
+    }
+
+    /**
+     * Direct saved-quote pivot records created by this user.
+     */
+    public function savedQuoteRecords(): HasMany
+    {
+        return $this->hasMany(SavedQuote::class);
+    }
+
+    /**
+     * Quotes saved (bookmarked) by this user.
+     */
+    public function savedQuotes(): BelongsToMany
+    {
+        return $this->belongsToMany(Quote::class, 'saved_quotes')
+            ->withTimestamps();
+    }
+
+    /**
+     * Resolve the public URL for the user's uploaded avatar, or null if using default avatar.
+     */
+    public function avatarUrl(): ?string
+    {
+        if (empty($this->avatar_path)) {
+            return null;
+        }
+
+        return asset('storage/' . ltrim($this->avatar_path, '/'));
+    }
+
+    /**
+     * Compute the real total number of likes received across all posts owned by this user.
+     */
+    public function receivedLikesCount(): int
+    {
+        if (! Schema::hasTable('quote_likes') || ! Schema::hasTable('quotes')) {
+            return 0;
+        }
+
+        return QuoteLike::query()
+            ->whereIn('quote_id', $this->quotes()->select('id'))
+            ->count();
     }
 }
