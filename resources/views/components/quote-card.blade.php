@@ -153,38 +153,39 @@
             <div class="flex items-center gap-1.5">
                 {{-- Like Control --}}
                 @auth
-                    <form method="POST" action="{{ route('quotes.like.toggle', $quote) }}" data-like-form="{{ $quote->id }}">
+                    <form method="POST" action="{{ route('quotes.like.toggle', $quote, false) }}" data-like-form="{{ $quote->id }}">
                         @csrf
                         <button
                             type="submit"
                             data-like-button="{{ $quote->id }}"
                             aria-pressed="{{ $isLiked ? 'true' : 'false' }}"
                             aria-label="{{ __('Like') }}"
-                            class="px-3 py-1.5 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 transition-all cursor-pointer {{ $isLiked ? 'bg-[#4A3328] text-[#FFFEFA] dark:bg-[#C9A66B] dark:text-[#211A16]' : 'btn-editorial-secondary' }}"
+                            class="px-3 py-1.5 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 transition-all cursor-pointer {{ $isLiked ? 'theme-brand-pill' : 'btn-editorial-secondary' }}"
                         >
-                            <svg data-like-icon="{{ $quote->id }}" class="w-3.5 h-3.5 {{ $isLiked ? 'fill-current' : 'fill-none' }}" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <svg data-like-icon="{{ $quote->id }}" class="w-3.5 h-3.5 pointer-events-none {{ $isLiked ? 'fill-current' : 'fill-none' }}" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
                             </svg>
-                            <span data-like-count="{{ $quote->id }}">{{ $likesCount }}</span>
+                            <span data-like-count="{{ $quote->id }}" class="pointer-events-none">{{ $likesCount }}</span>
                         </button>
                     </form>
                 @else
                     <button
                         type="button"
                         data-require-auth="like"
+                        data-modal-open="guest-auth-modal"
                         class="px-3 py-1.5 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 btn-editorial-secondary cursor-pointer"
                         aria-label="{{ __('Like') }}"
                     >
-                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <svg class="w-3.5 h-3.5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
                         </svg>
-                        <span>{{ $likesCount }}</span>
+                        <span class="pointer-events-none">{{ $likesCount }}</span>
                     </button>
                 @endauth
 
                 {{-- Save / Bookmark Control --}}
                 @auth
-                    <form method="POST" action="{{ route('quotes.save.toggle', $quote) }}" data-save-form="{{ $quote->id }}">
+                    <form method="POST" action="{{ route('quotes.save.toggle', $quote, false) }}" data-save-form="{{ $quote->id }}">
                         @csrf
                         <button
                             type="submit"
@@ -194,27 +195,28 @@
                             aria-pressed="{{ $isSaved ? 'true' : 'false' }}"
                             class="px-3 py-1.5 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 transition-all cursor-pointer {{ $isSaved ? 'bg-[#B99A68] text-[#2B1D17]' : 'btn-editorial-secondary' }}"
                         >
-                            <svg data-save-icon="{{ $quote->id }}" class="w-3.5 h-3.5 {{ $isSaved ? 'fill-current' : 'fill-none' }}" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <svg data-save-icon="{{ $quote->id }}" class="w-3.5 h-3.5 pointer-events-none {{ $isSaved ? 'fill-current' : 'fill-none' }}" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
                             </svg>
-                            <span data-save-label="{{ $quote->id }}">{{ $isSaved ? __('Saved') : __('Save') }}</span>
+                            <span data-save-label="{{ $quote->id }}" class="pointer-events-none">{{ $isSaved ? __('Saved') : __('Save') }}</span>
                         </button>
                     </form>
                 @else
                     <button
                         type="button"
                         data-require-auth="save"
+                        data-modal-open="guest-auth-modal"
                         class="px-3 py-1.5 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 btn-editorial-secondary cursor-pointer"
                     >
-                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <svg class="w-3.5 h-3.5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
                         </svg>
-                        <span>{{ __('Save') }}</span>
+                        <span class="pointer-events-none">{{ __('Save') }}</span>
                     </button>
                 @endauth
             </div>
 
-            {{-- Copy & Share Controls (Available to Both Guests and Authenticated Users) --}}
+            {{-- Independent Copy Action & PNG Share Generator Trigger (Available to Guests and Auth Users) --}}
             <div class="flex items-center gap-1.5">
                 <button
                     type="button"
@@ -224,25 +226,22 @@
                     data-copy-error="{{ __('Unable to copy quote') }}"
                     class="px-3 py-1.5 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 btn-editorial-secondary cursor-pointer"
                 >
-                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <svg class="w-3.5 h-3.5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
                     </svg>
-                    <span>{{ __('Copy') }}</span>
+                    <span class="pointer-events-none">{{ __('Copy') }}</span>
                 </button>
 
                 <button
                     type="button"
                     data-share-quote="{{ $quote->id }}"
-                    data-copy-quote="{{ e($quote->quote_text) }}"
-                    data-copy-author="{{ e($copyAuthor) }}"
-                    data-copy-success="{{ __('Copied to clipboard') }}"
-                    data-copy-error="{{ __('Unable to copy quote') }}"
+                    aria-label="{{ __('Share as Image') }}"
                     class="px-3 py-1.5 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 btn-editorial-secondary cursor-pointer"
                 >
-                    <svg class="w-3.5 h-3.5 text-[#B99A68]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <svg class="w-3.5 h-3.5 text-[#B99A68] pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
                     </svg>
-                    <span>{{ __('Share') }}</span>
+                    <span class="pointer-events-none">{{ __('Share') }}</span>
                 </button>
             </div>
         </div>
@@ -269,7 +268,7 @@
                         {{ __('Cancel') }}
                     </button>
 
-                    <form method="POST" action="{{ route('my-quotes.destroy', $quote) }}">
+                    <form method="POST" action="{{ route('my-quotes.destroy', $quote, false) }}">
                         @csrf
                         @method('DELETE')
                         <x-button type="submit" variant="danger" size="sm">

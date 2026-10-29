@@ -2,11 +2,15 @@
  * QuoteIt — Shared Application Shell & Editorial UI Interactions
  * Handles:
  *  - Persistent Light/Dark theme switching (with Sun/Moon icon state & aria-label updates)
- *  - Mobile navigation drawer & Account dropdown menu
+ *  - Mobile navigation drawer & Account Avatar dropdown menu
+ *  - Account page Avatar file selection, live preview & auto-submit
  *  - Accessible Modal dialogs & Guest Sign-In prompt modal
  *  - Clipboard copy action with localized toast feedback
- *  - Progressive AJAX Like/Unlike and Save/Unsave handlers with double-click lock & error recovery
+ *  - Scroll-preserving AJAX Like/Unlike and Save/Unsave handlers
+ *  - High-Resolution PNG Share Generator Modal & Multi-Template Canvas Renderer
  */
+
+import { initShareGenerator } from './share-generator';
 
 const STORAGE_THEME_KEY = 'quoteit_theme';
 
@@ -20,6 +24,7 @@ function applyTheme(theme, persist = true) {
 
     root.classList.toggle('dark', isDark);
     root.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    root.style.colorScheme = isDark ? 'dark' : 'light';
 
     if (persist) {
         try {
@@ -29,7 +34,6 @@ function applyTheme(theme, persist = true) {
         }
     }
 
-    // Update all theme toggle buttons (desktop & mobile)
     document.querySelectorAll('[data-theme-toggle]').forEach((btn) => {
         const lightLabel = btn.getAttribute('data-label-light') || 'Light mode active — switch to dark mode';
         const darkLabel = btn.getAttribute('data-label-dark') || 'Dark mode active — switch to light mode';
@@ -42,8 +46,6 @@ function applyTheme(theme, persist = true) {
         const sunIcon = btn.querySelector('[data-theme-icon="sun"]');
         const moonIcon = btn.querySelector('[data-theme-icon="moon"]');
 
-        // Specification Rule (Section 7):
-        // Show a SUN icon when light mode is active and a MOON icon when dark mode is active.
         if (sunIcon && moonIcon) {
             sunIcon.classList.toggle('hidden', isDark);
             moonIcon.classList.toggle('hidden', !isDark);
@@ -67,13 +69,13 @@ function showToast(message, type = 'success') {
         'pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl border shadow-lg text-sm font-medium transition-all duration-200',
         isError
             ? 'bg-red-950/90 text-red-100 border-red-700'
-            : 'bg-[#2B1D17] text-[#F8F4EC] dark:bg-[#F2E8DA] dark:text-[#211A16] border-[#B99A68]',
+            : 'bg-[#2B1D17] text-[#F8F4EC] border-[#B99A68]',
     ].join(' ');
     toast.setAttribute('role', 'status');
     toast.setAttribute('aria-live', 'polite');
 
     const dot = document.createElement('span');
-    dot.className = `w-2 h-2 rounded-full shrink-0 ${isError ? 'bg-red-400' : 'bg-[#B99A68] dark:bg-[#4A3328]'}`;
+    dot.className = `w-2 h-2 rounded-full shrink-0 ${isError ? 'bg-red-400' : 'bg-[#B99A68]'}`;
 
     const textSpan = document.createElement('span');
     textSpan.textContent = message;
@@ -107,6 +109,7 @@ async function copyQuoteText(text, successMsg, errorMsg) {
         textarea.value = text;
         textarea.setAttribute('readonly', '');
         textarea.style.position = 'fixed';
+        textarea.style.top = '0';
         textarea.style.opacity = '0';
         textarea.style.pointerEvents = 'none';
         document.body.appendChild(textarea);
@@ -135,7 +138,7 @@ function openModal(modalId) {
 
     const focusable = modal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
     if (focusable) {
-        setTimeout(() => focusable.focus(), 30);
+        setTimeout(() => focusable.focus({ preventScroll: true }), 30);
     }
 }
 
@@ -157,32 +160,57 @@ function getCsrfToken(form) {
     return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 }
 
+function resolveSameOriginAction(actionUrl) {
+    try {
+        const parsed = new URL(actionUrl, window.location.origin);
+        return parsed.pathname + parsed.search;
+    } catch (e) {
+        return actionUrl;
+    }
+}
+
 async function handleLikeFormSubmit(form, e) {
-    e.preventDefault();
-    if (form.dataset.submitting === 'true') return;
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    if (!form || form.dataset.submitting === 'true') return;
 
     const quoteId = form.getAttribute('data-like-form');
     const button = form.querySelector('[data-like-button]');
     form.dataset.submitting = 'true';
-    if (button) button.disabled = true;
+
+    if (button) {
+        button.setAttribute('aria-busy', 'true');
+        button.classList.add('opacity-75', 'pointer-events-none');
+    }
 
     try {
-        const response = await fetch(form.action, {
+        const formData = new FormData(form);
+        const csrfToken = getCsrfToken(form);
+        if (csrfToken && !formData.has('_token')) {
+            formData.append('_token', csrfToken);
+        }
+
+        const response = await fetch(resolveSameOriginAction(form.action), {
             method: 'POST',
+            credentials: 'same-origin',
             headers: {
-                'X-CSRF-TOKEN': getCsrfToken(form),
+                'X-CSRF-TOKEN': csrfToken,
                 'Accept': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest',
             },
+            body: formData,
         });
 
-        if (response.status === 401) {
+        if (response.status === 401 || response.status === 419) {
             promptGuestAuth();
             return;
         }
 
         if (!response.ok) {
-            throw new Error('Request failed');
+            throw new Error(`HTTP ${response.status}`);
         }
 
         const data = await response.json();
@@ -192,9 +220,7 @@ async function handleLikeFormSubmit(form, e) {
             btn.setAttribute('aria-pressed', isLiked ? 'true' : 'false');
             btn.className = [
                 'px-3 py-1.5 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 transition-all cursor-pointer',
-                isLiked
-                    ? 'bg-[#4A3328] text-[#FFFEFA] dark:bg-[#C9A66B] dark:text-[#211A16]'
-                    : 'btn-editorial-secondary',
+                isLiked ? 'theme-brand-pill' : 'btn-editorial-secondary',
             ].join(' ');
         });
 
@@ -207,43 +233,73 @@ async function handleLikeFormSubmit(form, e) {
             countEl.textContent = String(data.likes_count ?? 0);
         });
 
+        if (typeof data.received_likes_count === 'number') {
+            document.querySelectorAll('[data-navbar-likes-received], [data-stat-received-likes]').forEach((el) => {
+                el.textContent = String(data.received_likes_count);
+            });
+        }
+
         if (data.message) {
             showToast(data.message, 'success');
         }
     } catch (error) {
-        form.submit();
+        showToast(
+            document.documentElement.lang === 'ar'
+                ? 'تعذر تحديث الإعجاب حالياً. يرجى المحاولة مرة أخرى.'
+                : 'Unable to update like right now. Please try again.',
+            'error'
+        );
     } finally {
         form.dataset.submitting = 'false';
-        if (button) button.disabled = false;
+        if (button) {
+            button.removeAttribute('aria-busy');
+            button.classList.remove('opacity-75', 'pointer-events-none');
+        }
     }
 }
 
 async function handleSaveFormSubmit(form, e) {
-    e.preventDefault();
-    if (form.dataset.submitting === 'true') return;
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    if (!form || form.dataset.submitting === 'true') return;
 
     const quoteId = form.getAttribute('data-save-form');
     const button = form.querySelector('[data-save-button]');
     form.dataset.submitting = 'true';
-    if (button) button.disabled = true;
+
+    if (button) {
+        button.setAttribute('aria-busy', 'true');
+        button.classList.add('opacity-75', 'pointer-events-none');
+    }
 
     try {
-        const response = await fetch(form.action, {
+        const formData = new FormData(form);
+        const csrfToken = getCsrfToken(form);
+        if (csrfToken && !formData.has('_token')) {
+            formData.append('_token', csrfToken);
+        }
+
+        const response = await fetch(resolveSameOriginAction(form.action), {
             method: 'POST',
+            credentials: 'same-origin',
             headers: {
-                'X-CSRF-TOKEN': getCsrfToken(form),
+                'X-CSRF-TOKEN': csrfToken,
                 'Accept': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest',
             },
+            body: formData,
         });
 
-        if (response.status === 401) {
+        if (response.status === 401 || response.status === 419) {
             promptGuestAuth();
             return;
         }
 
         if (!response.ok) {
-            throw new Error('Request failed');
+            throw new Error(`HTTP ${response.status}`);
         }
 
         const data = await response.json();
@@ -266,7 +322,6 @@ async function handleSaveFormSubmit(form, e) {
             labelEl.textContent = data.label || (isSaved ? 'Saved' : 'Save');
         });
 
-        // If unsaved from the private Saved Quotes page, remove the card smoothly
         const savedPageGrid = document.querySelector('[data-saved-page-grid]');
         if (savedPageGrid && !isSaved) {
             const card = document.getElementById(`quote-card-${quoteId}`);
@@ -286,14 +341,69 @@ async function handleSaveFormSubmit(form, e) {
             showToast(data.message, 'success');
         }
     } catch (error) {
-        form.submit();
+        showToast(
+            document.documentElement.lang === 'ar'
+                ? 'تعذر تحديث الحفظ حالياً. يرجى المحاولة مرة أخرى.'
+                : 'Unable to update saved state right now. Please try again.',
+            'error'
+        );
     } finally {
         form.dataset.submitting = 'false';
-        if (button) button.disabled = false;
+        if (button) {
+            button.removeAttribute('aria-busy');
+            button.classList.remove('opacity-75', 'pointer-events-none');
+        }
     }
 }
 
-// Expose global helper namespace for inline/progressive handlers
+function initAvatarControls() {
+    const avatarInput = document.getElementById('avatar');
+    const avatarForm = document.getElementById('account-avatar-form');
+    const previewImg = document.getElementById('account-avatar-preview-img');
+    const filenameLabel = document.getElementById('account-avatar-filename');
+    let pendingAutoSubmit = false;
+
+    if (!avatarInput) return;
+
+    avatarInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+
+        if (filenameLabel) {
+            filenameLabel.textContent = file.name;
+            filenameLabel.classList.remove('hidden');
+        }
+
+        if (previewImg) {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                previewImg.src = ev.target.result;
+                previewImg.classList.remove('hidden');
+                const fallbackSpan = previewImg.parentElement?.querySelector('[data-avatar-initials]');
+                if (fallbackSpan) {
+                    fallbackSpan.classList.add('hidden');
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        if (pendingAutoSubmit && avatarForm) {
+            pendingAutoSubmit = false;
+            avatarForm.submit();
+        }
+    });
+
+    if (avatarForm) {
+        avatarForm.addEventListener('submit', (e) => {
+            if (!avatarInput.files || avatarInput.files.length === 0) {
+                e.preventDefault();
+                pendingAutoSubmit = true;
+                avatarInput.click();
+            }
+        });
+    }
+}
+
 window.QuoteItUI = {
     toggleTheme,
     applyTheme,
@@ -304,46 +414,22 @@ window.QuoteItUI = {
     promptGuestAuth,
 };
 
-document.addEventListener('DOMContentLoaded', () => {
-    // Sync theme icons on initial load
+function initQuoteItApp() {
+    // Always initialize the PNG Share Generator
+    try {
+        initShareGenerator();
+    } catch (err) {
+        console.error('Share generator init warning:', err);
+    }
+
+    if (window.__QUOTEIT_BOOTSTRAPPED__) {
+        return;
+    }
+    window.__QUOTEIT_BOOTSTRAPPED__ = true;
+
     applyTheme(getCurrentTheme(), false);
+    initAvatarControls();
 
-    // Bind theme toggle buttons
-    document.querySelectorAll('[data-theme-toggle]').forEach((btn) => {
-        btn.addEventListener('click', () => toggleTheme());
-    });
-
-    // Bind mobile menu toggle
-    const mobileMenuBtn = document.getElementById('mobile-menu-toggle');
-    const mobileMenuPanel = document.getElementById('mobile-menu-panel');
-    if (mobileMenuBtn && mobileMenuPanel) {
-        mobileMenuBtn.addEventListener('click', () => {
-            const expanded = mobileMenuBtn.getAttribute('aria-expanded') === 'true';
-            mobileMenuBtn.setAttribute('aria-expanded', (!expanded).toString());
-            mobileMenuPanel.classList.toggle('hidden', expanded);
-        });
-    }
-
-    // Bind account dropdown menu
-    const accountMenuBtn = document.getElementById('account-menu-button');
-    const accountMenuDropdown = document.getElementById('account-menu-dropdown');
-    if (accountMenuBtn && accountMenuDropdown) {
-        accountMenuBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const isHidden = accountMenuDropdown.classList.contains('hidden');
-            accountMenuDropdown.classList.toggle('hidden', !isHidden);
-            accountMenuBtn.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
-        });
-
-        document.addEventListener('click', (e) => {
-            if (!accountMenuDropdown.contains(e.target) && !accountMenuBtn.contains(e.target)) {
-                accountMenuDropdown.classList.add('hidden');
-                accountMenuBtn.setAttribute('aria-expanded', 'false');
-            }
-        });
-    }
-
-    // Progressive AJAX handling for Like and Save forms
     document.addEventListener('submit', (e) => {
         const likeForm = e.target.closest('form[data-like-form]');
         if (likeForm) {
@@ -357,8 +443,76 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Bind declarative modal triggers
     document.addEventListener('click', (e) => {
+        const themeBtn = e.target.closest('[data-theme-toggle]');
+        if (themeBtn) {
+            e.preventDefault();
+            toggleTheme();
+            return;
+        }
+
+        const likeBtn = e.target.closest('[data-like-button]');
+        if (likeBtn) {
+            const parentLikeForm = likeBtn.closest('form[data-like-form]');
+            if (parentLikeForm) {
+                handleLikeFormSubmit(parentLikeForm, e);
+                return;
+            }
+        }
+
+        const saveBtn = e.target.closest('[data-save-button]');
+        if (saveBtn) {
+            const parentSaveForm = saveBtn.closest('form[data-save-form]');
+            if (parentSaveForm) {
+                handleSaveFormSubmit(parentSaveForm, e);
+                return;
+            }
+        }
+
+        const guestPromptTrigger = e.target.closest('[data-require-auth]');
+        if (guestPromptTrigger) {
+            e.preventDefault();
+            e.stopPropagation();
+            promptGuestAuth();
+            return;
+        }
+
+        const accountMenuBtn = e.target.closest('#account-menu-button');
+        const accountMenuDropdown = document.getElementById('account-menu-dropdown');
+        if (accountMenuBtn && accountMenuDropdown) {
+            e.preventDefault();
+            e.stopPropagation();
+            const isHidden = accountMenuDropdown.classList.contains('hidden');
+            accountMenuDropdown.classList.toggle('hidden', !isHidden);
+            accountMenuBtn.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+            return;
+        }
+
+        if (accountMenuDropdown && !accountMenuDropdown.classList.contains('hidden')) {
+            if (!accountMenuDropdown.contains(e.target)) {
+                accountMenuDropdown.classList.add('hidden');
+                document.getElementById('account-menu-button')?.setAttribute('aria-expanded', 'false');
+            }
+        }
+
+        const mobileMenuBtn = e.target.closest('#mobile-menu-toggle');
+        const mobileMenuPanel = document.getElementById('mobile-menu-panel');
+        if (mobileMenuBtn && mobileMenuPanel) {
+            e.preventDefault();
+            const expanded = mobileMenuBtn.getAttribute('aria-expanded') === 'true';
+            mobileMenuBtn.setAttribute('aria-expanded', (!expanded).toString());
+            mobileMenuPanel.classList.toggle('hidden', expanded);
+            return;
+        }
+
+        const avatarTrigger = e.target.closest('[data-avatar-trigger]');
+        if (avatarTrigger) {
+            e.preventDefault();
+            const fileInput = document.getElementById('avatar');
+            if (fileInput) fileInput.click();
+            return;
+        }
+
         const openTrigger = e.target.closest('[data-modal-open]');
         if (openTrigger) {
             e.preventDefault();
@@ -370,13 +524,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (closeTrigger) {
             e.preventDefault();
             closeModal(closeTrigger.getAttribute('data-modal-close'));
-            return;
-        }
-
-        const guestPromptTrigger = e.target.closest('[data-require-auth]');
-        if (guestPromptTrigger) {
-            e.preventDefault();
-            promptGuestAuth();
             return;
         }
 
@@ -392,16 +539,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Close modals and dropdowns on Escape key
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             document.querySelectorAll('[data-modal-backdrop]:not(.hidden)').forEach((modal) => {
                 closeModal(modal.id);
             });
+            const accountMenuDropdown = document.getElementById('account-menu-dropdown');
             if (accountMenuDropdown && !accountMenuDropdown.classList.contains('hidden')) {
                 accountMenuDropdown.classList.add('hidden');
-                accountMenuBtn?.setAttribute('aria-expanded', 'false');
+                document.getElementById('account-menu-button')?.setAttribute('aria-expanded', 'false');
             }
         }
     });
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initQuoteItApp);
+} else {
+    initQuoteItApp();
+}

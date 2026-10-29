@@ -11,24 +11,10 @@
 |--------------------------------------------------------------------------
 | Warm Literary Editorial — Design Tokens (Light & Dark Modes)
 |--------------------------------------------------------------------------
-| Light Palette:
-|   Main background:      #F8F4EC (Warm ivory)
-|   Card background:      #FFFEFA (Paper white)
-|   Secondary background: #EFE5D5 (Sandy beige)
-|   Main identity color:  #4A3328 (Cocoa brown)
-|   Dark headings:        #2B1D17 (Espresso brown)
-|   Accent:               #B99A68 (Muted gold)
-|   Secondary text:       #827469 (Warm brown-gray)
-|
-| Dark Palette:
-|   Main background:      #211A16
-|   Card background:      #2C231D
-|   Primary text:         #F2E8DA
-|   Secondary text:       #C3B4A0
-|   Accent:               #C9A66B
 */
 
-:root {
+:root,
+html:not(.dark) {
     --bg-main: #F8F4EC;
     --bg-card: #FFFEFA;
     --bg-secondary: #EFE5D5;
@@ -38,6 +24,7 @@
     --text-secondary: #827469;
     --brand-primary: #4A3328;
     --brand-primary-hover: #3B281F;
+    --brand-contrast: #FFFEFA;
     --accent-gold: #B99A68;
     --accent-gold-soft: rgba(185, 154, 104, 0.16);
     --border-subtle: #E4D9C8;
@@ -56,12 +43,30 @@ html.dark {
     --text-secondary: #C3B4A0;
     --brand-primary: #C9A66B;
     --brand-primary-hover: #D6B782;
+    --brand-contrast: #211A16;
     --accent-gold: #C9A66B;
     --accent-gold-soft: rgba(201, 166, 107, 0.18);
     --border-subtle: #41342C;
     --border-strong: #56453B;
     --shadow-card: 0 8px 28px -6px rgba(0, 0, 0, 0.35), 0 2px 8px -2px rgba(0, 0, 0, 0.25);
     color-scheme: dark;
+}
+
+/* Strictly tie Sun/Moon icon visibility to html.dark */
+html:not(.dark) [data-theme-icon="sun"] {
+    display: block !important;
+}
+
+html:not(.dark) [data-theme-icon="moon"] {
+    display: none !important;
+}
+
+html.dark [data-theme-icon="sun"] {
+    display: none !important;
+}
+
+html.dark [data-theme-icon="moon"] {
+    display: block !important;
 }
 
 @theme {
@@ -88,7 +93,6 @@ html.dark {
     html {
         background-color: var(--bg-main);
         color: var(--text-primary);
-        scroll-behavior: smooth;
     }
 
     html[dir="rtl"] body {
@@ -121,39 +125,39 @@ html.dark {
 
 /* Semantic utility classes backed by theme tokens */
 .bg-editorial-main {
-    background-color: var(--bg-main);
+    background-color: var(--bg-main) !important;
 }
 
 .bg-editorial-card {
-    background-color: var(--bg-card);
+    background-color: var(--bg-card) !important;
 }
 
 .bg-editorial-secondary {
-    background-color: var(--bg-secondary);
+    background-color: var(--bg-secondary) !important;
 }
 
 .text-editorial-primary {
-    color: var(--text-primary);
+    color: var(--text-primary) !important;
 }
 
 .text-editorial-heading {
-    color: var(--text-heading);
+    color: var(--text-heading) !important;
 }
 
 .text-editorial-secondary {
-    color: var(--text-secondary);
+    color: var(--text-secondary) !important;
 }
 
 .text-editorial-accent {
-    color: var(--accent-gold);
+    color: var(--accent-gold) !important;
 }
 
 .border-editorial {
-    border-color: var(--border-subtle);
+    border-color: var(--border-subtle) !important;
 }
 
 .border-editorial-strong {
-    border-color: var(--border-strong);
+    border-color: var(--border-strong) !important;
 }
 
 .editorial-card {
@@ -168,50 +172,42 @@ html.dark {
     border-color: var(--border-strong);
 }
 
-.btn-editorial-primary {
-    background-color: #4A3328;
-    color: #FFFEFA;
+.btn-editorial-primary,
+.theme-brand-pill {
+    background-color: var(--brand-primary) !important;
+    color: var(--brand-contrast) !important;
     border: 1px solid transparent;
     transition: background-color 0.15s ease, transform 0.15s ease;
 }
 
 .btn-editorial-primary:hover {
-    background-color: #2B1D17;
-}
-
-html.dark .btn-editorial-primary {
-    background-color: #C9A66B;
-    color: #211A16;
-}
-
-html.dark .btn-editorial-primary:hover {
-    background-color: #D6B782;
+    background-color: var(--brand-primary-hover) !important;
 }
 
 .btn-editorial-secondary {
-    background-color: var(--bg-secondary);
-    color: var(--text-primary);
-    border: 1px solid var(--border-subtle);
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-subtle) !important;
     transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .btn-editorial-secondary:hover {
-    border-color: var(--accent-gold);
+    border-color: var(--accent-gold) !important;
 }
 
 .input-editorial {
-    background-color: var(--bg-card);
-    color: var(--text-primary);
-    border: 1px solid var(--border-strong);
+    background-color: var(--bg-card) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-strong) !important;
 }
 
 .input-editorial::placeholder {
-    color: var(--text-secondary);
+    color: var(--text-secondary) !important;
 }
 
 .input-editorial:focus {
     outline: none;
-    border-color: var(--accent-gold);
+    border-color: var(--accent-gold) !important;
     box-shadow: 0 0 0 3px var(--accent-gold-soft);
 }
 

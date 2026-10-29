@@ -27,6 +27,7 @@ class UpdateAvatarRequest extends FormRequest
     {
         return [
             'avatar.required' => __('Please select an image file to upload as your avatar.'),
+            'avatar.uploaded' => __('The avatar image must not exceed 2 MB.'),
             'avatar.image' => __('The avatar must be a valid image file (JPG, PNG, or WEBP).'),
             'avatar.mimes' => __('The avatar must be a JPG, PNG, or WEBP image.'),
             'avatar.max' => __('The avatar image must not exceed 2 MB.'),

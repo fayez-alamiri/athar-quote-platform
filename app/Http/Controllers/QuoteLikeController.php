@@ -39,6 +39,7 @@ class QuoteLikeController extends Controller
         });
 
         $likesCount = $quote->likes()->count();
+        $receivedLikesCount = $user->receivedLikesCount();
         $message = $liked
             ? __('Quote liked.')
             : __('Like removed.');
@@ -49,6 +50,7 @@ class QuoteLikeController extends Controller
                 'quote_id' => $quote->id,
                 'liked' => $liked,
                 'likes_count' => $likesCount,
+                'received_likes_count' => $receivedLikesCount,
                 'message' => $message,
             ]);
         }

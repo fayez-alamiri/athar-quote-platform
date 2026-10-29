@@ -10,7 +10,7 @@
         {{-- Brand Wordmark (Centralized in config/brand.php) --}}
         <div class="flex items-center gap-6">
             <a href="{{ route('home') }}" class="group flex items-center gap-3 focus:outline-none">
-                <span class="w-10 h-10 rounded-xl bg-[#4A3328] dark:bg-[#C9A66B] text-[#FFFEFA] dark:text-[#211A16] flex items-center justify-center shadow-sm transition-transform group-hover:scale-105">
+                <span class="w-10 h-10 rounded-xl theme-brand-pill flex items-center justify-center shadow-sm transition-transform group-hover:scale-105">
                     <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                     </svg>
@@ -73,7 +73,7 @@
                         href="{{ Route::has('quotes.create-quick') ? route('quotes.create-quick') : '#' }}"
                         class="px-3 py-1.5 rounded-xl text-xs font-semibold btn-editorial-secondary flex items-center gap-1.5"
                     >
-                        <svg class="w-3.5 h-3.5 text-editorial-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <svg class="w-3.5 h-3.5 text-editorial-accent pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
                         </svg>
                         <span>{{ __('Quick Quote') }}</span>
@@ -83,7 +83,7 @@
                         href="{{ Route::has('quotes.create-book') ? route('quotes.create-book') : '#' }}"
                         class="px-3 py-1.5 rounded-xl text-xs font-semibold btn-editorial-primary flex items-center gap-1.5"
                     >
-                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <svg class="w-3.5 h-3.5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
                         </svg>
                         <span>{{ __('Book Quote') }}</span>
@@ -96,14 +96,14 @@
                 <a
                     href="{{ route('locale.switch', 'ar') }}"
                     aria-label="{{ __('Switch to Arabic') }}"
-                    class="px-2.5 py-1 rounded-lg text-xs font-bold tracking-wide transition-all {{ $locale === 'ar' ? 'bg-[#4A3328] text-[#FFFEFA] dark:bg-[#C9A66B] dark:text-[#211A16] shadow-xs' : 'text-editorial-secondary hover:text-editorial-primary' }}"
+                    class="px-2.5 py-1 rounded-lg text-xs font-bold tracking-wide transition-all {{ $locale === 'ar' ? 'theme-brand-pill shadow-xs' : 'text-editorial-secondary hover:text-editorial-primary' }}"
                 >
                     AR
                 </a>
                 <a
                     href="{{ route('locale.switch', 'en') }}"
                     aria-label="{{ __('Switch to English') }}"
-                    class="px-2.5 py-1 rounded-lg text-xs font-bold tracking-wide transition-all {{ $locale === 'en' ? 'bg-[#4A3328] text-[#FFFEFA] dark:bg-[#C9A66B] dark:text-[#211A16] shadow-xs' : 'text-editorial-secondary hover:text-editorial-primary' }}"
+                    class="px-2.5 py-1 rounded-lg text-xs font-bold tracking-wide transition-all {{ $locale === 'en' ? 'theme-brand-pill shadow-xs' : 'text-editorial-secondary hover:text-editorial-primary' }}"
                 >
                     EN
                 </a>
@@ -120,13 +120,13 @@
                 class="w-9 h-9 rounded-xl bg-editorial-secondary border border-editorial flex items-center justify-center text-editorial-primary hover:border-[#B99A68] transition-colors cursor-pointer"
             >
                 {{-- Sun Icon: Visible when Light Mode is active --}}
-                <svg data-theme-icon="sun" class="w-4 h-4 text-[#4A3328]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <svg data-theme-icon="sun" class="w-4 h-4 text-[#4A3328] pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                     <circle cx="12" cy="12" r="4"></circle>
                     <path stroke-linecap="round" d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41"></path>
                 </svg>
 
                 {{-- Moon Icon: Visible when Dark Mode is active --}}
-                <svg data-theme-icon="moon" class="w-4 h-4 text-[#C9A66B] hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <svg data-theme-icon="moon" class="w-4 h-4 text-[#C9A66B] hidden pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path>
                 </svg>
             </button>
@@ -144,25 +144,32 @@
                         id="account-menu-button"
                         aria-expanded="false"
                         aria-haspopup="true"
+                        aria-controls="account-menu-dropdown"
                         aria-label="{{ __('Account menu') }}"
-                        class="flex items-center gap-2 p-1 rounded-xl border border-editorial hover:border-[#B99A68] transition-colors cursor-pointer"
+                        title="{{ __('Account menu') }}"
+                        class="flex items-center gap-1.5 p-1 rounded-xl border border-editorial hover:border-[#B99A68] transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#B99A68]"
                     >
-                        <x-avatar :user="$authUser" size="sm" />
+                        <span class="pointer-events-none inline-flex items-center">
+                            <x-avatar :user="$authUser" size="sm" />
+                        </span>
+                        <svg class="w-3.5 h-3.5 text-editorial-secondary pointer-events-none hidden sm:block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                        </svg>
                     </button>
 
                     <div
                         id="account-menu-dropdown"
-                        class="hidden absolute end-0 mt-2 w-60 rounded-2xl bg-editorial-card border border-editorial shadow-xl py-2 z-50"
+                        class="hidden absolute end-0 mt-2 w-64 rounded-2xl bg-editorial-card border border-editorial shadow-xl py-2 z-50"
                         role="menu"
                     >
-                        <div class="px-4 py-2.5 border-b border-editorial">
+                        <div class="px-4 py-3 border-b border-editorial">
                             <p class="text-sm font-bold text-editorial-heading truncate">{{ $authUser->name }}</p>
                             <p class="text-xs text-editorial-secondary truncate">{{ $authUser->email }}</p>
                             <div class="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-editorial-secondary text-xs font-medium text-editorial-primary">
                                 <svg class="w-3.5 h-3.5 text-[#B99A68]" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                                     <path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"/>
                                 </svg>
-                                <span>{{ __('Likes received') }}: <strong>{{ $receivedLikesCount }}</strong></span>
+                                <span>{{ __('Likes received') }}: <strong data-navbar-likes-received>{{ $receivedLikesCount }}</strong></span>
                             </div>
                         </div>
 
@@ -192,7 +199,7 @@
 
                         @if(Route::has('logout'))
                             <div class="border-t border-editorial pt-1 mt-1">
-                                <form method="POST" action="{{ route('logout') }}">
+                                <form method="POST" action="{{ route('logout', [], false) }}">
                                     @csrf
                                     <button
                                         type="submit"
@@ -209,7 +216,7 @@
 
                 {{-- Separate Visible Log Out Control in Main Navigation (Required by Section 11 & 12) --}}
                 @if(Route::has('logout'))
-                    <form method="POST" action="{{ route('logout') }}" class="hidden sm:inline-block">
+                    <form method="POST" action="{{ route('logout', [], false) }}" class="hidden sm:inline-block">
                         @csrf
                         <button
                             type="submit"
@@ -223,15 +230,13 @@
                 {{-- Guest Sign In & Register Controls --}}
                 <div class="hidden sm:flex items-center gap-2">
                     <a
-                        href="{{ Route::has('login') ? route('login') : '#guest-auth' }}"
-                        @if(!Route::has('login')) data-require-auth="login" @endif
+                        href="{{ Route::has('login') ? route('login') : '/login' }}"
                         class="px-3.5 py-2 rounded-xl text-xs font-semibold btn-editorial-secondary"
                     >
                         {{ __('Sign In') }}
                     </a>
                     <a
-                        href="{{ Route::has('register') ? route('register') : '#guest-auth' }}"
-                        @if(!Route::has('register')) data-require-auth="register" @endif
+                        href="{{ Route::has('register') ? route('register') : '/register' }}"
                         class="px-3.5 py-2 rounded-xl text-xs font-semibold btn-editorial-primary"
                     >
                         {{ __('Register') }}
@@ -248,7 +253,7 @@
                 aria-label="{{ __('Open navigation menu') }}"
                 class="md:hidden w-9 h-9 rounded-xl bg-editorial-secondary border border-editorial flex items-center justify-center text-editorial-primary cursor-pointer"
             >
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <svg class="w-5 h-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
                 </svg>
             </button>
@@ -298,9 +303,9 @@
                 </a>
             </div>
             @if(Route::has('logout'))
-                <form method="POST" action="{{ route('logout') }}" class="pt-2">
+                <form method="POST" action="{{ route('logout', [], false) }}" class="pt-2">
                     @csrf
-                    <button type="submit" class="w-full px-3 py-2 rounded-xl text-xs font-semibold text-center btn-editorial-secondary text-red-700 dark:text-red-400">
+                    <button type="submit" class="w-full px-3 py-2 rounded-xl text-xs font-semibold text-center btn-editorial-secondary text-red-700 dark:text-red-400 cursor-pointer">
                         {{ __('Log Out') }}
                     </button>
                 </form>
@@ -309,21 +314,19 @@
             <button
                 type="button"
                 data-require-auth="saved"
-                class="w-full text-start px-3 py-2 rounded-xl text-sm font-medium text-editorial-secondary hover:bg-editorial-secondary"
+                class="w-full text-start px-3 py-2 rounded-xl text-sm font-medium text-editorial-secondary hover:bg-editorial-secondary cursor-pointer"
             >
                 {{ __('Saved Quotes') }}
             </button>
             <div class="pt-2 grid grid-cols-2 gap-2">
                 <a
-                    href="{{ Route::has('login') ? route('login') : '#guest-auth' }}"
-                    @if(!Route::has('login')) data-require-auth="login" @endif
+                    href="{{ Route::has('login') ? route('login') : '/login' }}"
                     class="px-3 py-2 rounded-xl text-xs font-semibold text-center btn-editorial-secondary"
                 >
                     {{ __('Sign In') }}
                 </a>
                 <a
-                    href="{{ Route::has('register') ? route('register') : '#guest-auth' }}"
-                    @if(!Route::has('register')) data-require-auth="register" @endif
+                    href="{{ Route::has('register') ? route('register') : '/register' }}"
                     class="px-3 py-2 rounded-xl text-xs font-semibold text-center btn-editorial-primary"
                 >
                     {{ __('Register') }}

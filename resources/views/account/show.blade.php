@@ -8,9 +8,39 @@
     {{-- Profile Header & Avatar Management Card --}}
     <section class="editorial-card p-6 sm:p-8 space-y-6">
         <div class="flex flex-col sm:flex-row items-center sm:items-start gap-6">
-            <div class="relative shrink-0">
-                <x-avatar :user="$user" size="xl" />
-            </div>
+            {{-- Interactive Avatar Circle (Clicking opens file selector) --}}
+            <button
+                type="button"
+                data-avatar-trigger
+                title="{{ __('Profile Picture') }}"
+                aria-label="{{ __('Profile Picture') }}"
+                class="group relative shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-[#B99A68] cursor-pointer"
+            >
+                @php
+                    $avatarUrl = $user->avatarUrl();
+                    $initials = collect(explode(' ', trim($user->name)))
+                        ->filter()
+                        ->map(fn ($part) => mb_substr($part, 0, 1))
+                        ->take(2)
+                        ->implode('');
+                @endphp
+
+                <span class="w-20 h-20 rounded-full overflow-hidden border-2 border-editorial group-hover:border-[#B99A68] transition-colors flex items-center justify-center theme-brand-pill font-bold text-2xl relative pointer-events-none">
+                    <img
+                        id="account-avatar-preview-img"
+                        src="{{ $avatarUrl ?? '' }}"
+                        alt="{{ $user->name }}"
+                        class="{{ $avatarUrl ? '' : 'hidden' }} w-full h-full object-cover"
+                        onerror="this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden');"
+                    >
+                    <span
+                        data-avatar-initials
+                        class="{{ $avatarUrl ? 'hidden' : '' }} select-none"
+                    >
+                        {{ $initials ?: 'Q' }}
+                    </span>
+                </span>
+            </button>
 
             <div class="flex-1 text-center sm:text-start space-y-1.5">
                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-editorial-secondary text-editorial-primary border border-editorial">
@@ -46,14 +76,17 @@
                 <p class="text-xs text-editorial-secondary leading-relaxed">
                     {{ __('Upload a JPG, PNG, or WEBP image (maximum 2 MB). If no image is uploaded, your initials avatar is displayed.') }}
                 </p>
+                <p id="account-avatar-filename" class="hidden text-xs font-semibold text-[#B99A68] truncate pt-1"></p>
             </div>
 
             <div class="md:col-span-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3">
                 <form
+                    id="account-avatar-form"
                     method="POST"
-                    action="{{ route('account.avatar.update') }}"
+                    action="{{ route('account.avatar.update', [], false) }}"
                     enctype="multipart/form-data"
                     class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1"
+                    novalidate
                 >
                     @csrf
                     <div class="flex-1">
@@ -63,8 +96,7 @@
                             name="avatar"
                             type="file"
                             accept="image/jpeg,image/png,image/webp"
-                            required
-                            class="block w-full text-xs text-editorial-secondary file:me-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#4A3328] file:text-[#FFFEFA] dark:file:bg-[#C9A66B] dark:file:text-[#211A16] hover:file:opacity-90 cursor-pointer input-editorial p-1.5 rounded-xl"
+                            class="block w-full text-xs text-editorial-secondary file:me-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#4A3328] file:text-[#FFFEFA] hover:file:opacity-90 cursor-pointer input-editorial p-1.5 rounded-xl"
                         >
                     </div>
                     <x-button type="submit" variant="primary" size="sm">
@@ -73,7 +105,7 @@
                 </form>
 
                 @if (! empty($user->avatar_path))
-                    <form method="POST" action="{{ route('account.avatar.destroy') }}">
+                    <form method="POST" action="{{ route('account.avatar.destroy', [], false) }}">
                         @csrf
                         @method('DELETE')
                         <x-button type="submit" variant="secondary" size="sm" class="text-red-700 dark:text-red-400">
