@@ -16,16 +16,23 @@ if [ -n "${DB_HOST:-}" ]; then
     export DB_HOST="$(echo "$DB_HOST" | sed 's/-pooler\././g')"
 fi
 
+echo "Running production optimizations..."
 php artisan config:clear
 php artisan route:clear
 php artisan view:clear
 
 php artisan storage:link --force || true
 
-# Run additive migrations safely without wiping existing data
+echo "Running database migrations..."
 php artisan migrate --force
 
-# Seed initial literary quotes safely using updateOrCreate
+echo "Seeding database..."
 php artisan db:seed --force
 
+echo "Caching configuration and routes for maximum performance..."
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+echo "Starting Laravel HTTP server..."
 exec php artisan serve --host=0.0.0.0 --port=${PORT:-8080}

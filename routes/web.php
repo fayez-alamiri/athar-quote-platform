@@ -1,13 +1,16 @@
 <?php
 
-use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\LocaleController;
-use App\Http\Controllers\MyQuoteController;
 use App\Http\Controllers\QuoteController;
 use App\Http\Controllers\QuoteLikeController;
 use App\Http\Controllers\SavedQuoteController;
 use Illuminate\Support\Facades\Route;
+
+// Lightweight health check endpoint for keep-alive monitoring to prevent Render free-tier cold starts
+Route::get('/health', function () {
+    return response()->json(['status' => 'ok', 'timestamp' => now()->toIso8601String()]);
+});
 
 Route::get('/', [QuoteController::class, 'index'])->name('home');
 
@@ -40,14 +43,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/saved-quotes', [SavedQuoteController::class, 'index'])->name('saved.index');
 
     // My Account & Avatar Management
-    Route::get('/account', [AccountController::class, 'show'])->name('account.show');
-    Route::post('/account/avatar', [AccountController::class, 'updateAvatar'])->name('account.avatar.update');
-    Route::delete('/account/avatar', [AccountController::class, 'destroyAvatar'])->name('account.avatar.destroy');
+    Route::get('/account', [\App\Http\Controllers\AccountController::class, 'show'])->name('account.show');
+    Route::post('/account/avatar', [\App\Http\Controllers\AccountController::class, 'updateAvatar'])->name('account.avatar.update');
+    Route::delete('/account/avatar', [\App\Http\Controllers\AccountController::class, 'destroyAvatar'])->name('account.avatar.destroy');
 
     // My Quotes Management (Edit, Delete Single, Delete All Own Posts)
-    Route::get('/my-quotes', [MyQuoteController::class, 'index'])->name('my-quotes.index');
-    Route::delete('/my-quotes', [MyQuoteController::class, 'destroyAll'])->name('my-quotes.destroy-all');
-    Route::get('/my-quotes/{quote}/edit', [MyQuoteController::class, 'edit'])->name('my-quotes.edit');
-    Route::put('/my-quotes/{quote}', [MyQuoteController::class, 'update'])->name('my-quotes.update');
-    Route::delete('/my-quotes/{quote}', [MyQuoteController::class, 'destroy'])->name('my-quotes.destroy');
+    Route::get('/my-quotes', [\App\Http\Controllers\MyQuoteController::class, 'index'])->name('my-quotes.index');
+    Route::delete('/my-quotes', [\App\Http\Controllers\MyQuoteController::class, 'destroyAll'])->name('my-quotes.destroy-all');
+    Route::get('/my-quotes/{quote}/edit', [\App\Http\Controllers\MyQuoteController::class, 'edit'])->name('my-quotes.edit');
+    Route::put('/my-quotes/{quote}', [\App\Http\Controllers\MyQuoteController::class, 'update'])->name('my-quotes.update');
+    Route::delete('/my-quotes/{quote}', [\App\Http\Controllers\MyQuoteController::class, 'destroy'])->name('my-quotes.destroy');
 });
