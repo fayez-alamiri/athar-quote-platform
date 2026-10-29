@@ -1,13 +1,19 @@
 #!/usr/bin/env bash
 set -e
 
-# Map DATABASE_URL to DB_URL automatically for Laravel 13 PostgreSQL compatibility
+# Map DATABASE_URL <-> DB_URL and convert Neon pooled (-pooler.) hostnames
+# to direct Neon endpoints so PostgreSQL transactional DDL migrations succeed.
 if [ -n "${DATABASE_URL:-}" ] && [ -z "${DB_URL:-}" ]; then
     export DB_URL="$DATABASE_URL"
 fi
 
-if [ -n "${DB_URL:-}" ] && [ -z "${DATABASE_URL:-}" ]; then
+if [ -n "${DB_URL:-}" ]; then
+    export DB_URL="$(echo "$DB_URL" | sed 's/-pooler\././g')"
     export DATABASE_URL="$DB_URL"
+fi
+
+if [ -n "${DB_HOST:-}" ]; then
+    export DB_HOST="$(echo "$DB_HOST" | sed 's/-pooler\././g')"
 fi
 
 php artisan config:clear
