@@ -3,20 +3,15 @@
 return [
     /*
     |--------------------------------------------------------------------------
-    | Centralized Brand Configuration (Temporary Placeholder: QuoteIt)
+    | Centralized Brand Configuration — ATHAR (أَثَر)
     |--------------------------------------------------------------------------
-    |
-    | The project name is temporary. Change these values in one place when the
-    | final Arabic and English brand names are chosen. All views, navigation
-    | headers, footers, and PNG share templates read from this configuration.
-    |
     */
 
-    'technical_name' => env('BRAND_TECHNICAL_NAME', 'QuoteIt'),
+    'technical_name' => env('BRAND_TECHNICAL_NAME', 'ATHAR'),
 
     'name' => [
-        'ar' => env('BRAND_NAME_AR', 'QuoteIt'),
-        'en' => env('BRAND_NAME_EN', 'QuoteIt'),
+        'ar' => env('BRAND_NAME_AR', 'أَثَر'),
+        'en' => env('BRAND_NAME_EN', 'ATHAR'),
     ],
 
     'wordmark_subtitle' => [

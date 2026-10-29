@@ -24,7 +24,7 @@ class StoreBookQuoteRequest extends FormRequest
     {
         return [
             'book_title' => ['required', 'string', 'min:1', 'max:150'],
-            'book_cover' => ['required', 'file', 'image', 'mimes:jpeg,jpg,png,webp', 'max:4096'],
+            'book_cover' => ['required', 'file', 'image', 'mimes:jpeg,jpg,jfif,png,webp', 'max:4096'],
             'quote_text' => ['required', 'string', 'min:3', 'max:1000'],
             'attributed_author' => ['required', 'string', 'min:2', 'max:120'],
         ];

@@ -93,7 +93,7 @@
                                 id="book_cover"
                                 name="book_cover"
                                 type="file"
-                                accept="image/jpeg,image/png,image/webp"
+                                accept="image/jpeg,image/png,image/webp,.jfif"
                                 class="block w-full text-xs text-editorial-secondary file:me-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#4A3328] file:text-[#FFFEFA] dark:file:bg-[#C9A66B] dark:file:text-[#211A16] hover:file:opacity-90 cursor-pointer"
                             >
                             <p class="text-xs text-editorial-secondary">
@@ -154,6 +154,16 @@
                         <p class="text-xs font-medium text-red-600 dark:text-red-400" role="alert">{{ $message }}</p>
                     @enderror
                 </div>
+
+                {{-- Optional Quick Quote Attributed Author --}}
+                <x-input
+                    name="attributed_author"
+                    type="text"
+                    :label="__('Attributed Quote Author') . ' (' . __('Optional') . ')'"
+                    :value="$quote->attributed_author"
+                    :placeholder="__('e.g., Al-Mutanabbi / Socrates (leave blank if your own thought)')"
+                    maxlength="120"
+                />
             @endif
 
             <div class="flex items-center justify-end gap-3 pt-4 border-t border-editorial">

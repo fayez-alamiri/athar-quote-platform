@@ -1,58 +1,68 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# QuoteIt — Bilingual Literary Quote Platform (منصة الاقتباسات الأدبية)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+> **Branding Note:** `QuoteIt` is the temporary technical placeholder name. All displayed Arabic and English brand names, wordmark subtitles, and taglines are centrally configured in `config/brand.php` so they can be updated in one place without editing individual views or templates.
 
-## About Laravel
+QuoteIt is a bilingual (**Arabic `RTL` & English `LTR`**) literary quote platform built with **Laravel 13**, **Blade**, **Tailwind CSS 4**, **Vite**, and **SQLite**. It provides a calm, editorial reading environment (**Warm Literary Editorial**) where visitors can browse, search, filter, copy quotes, and generate high-resolution (`1080 × 1080` PNG) share cards across four visual templates, while authenticated members can publish **Quick Quotes** and **Book Quotes**, like quotes, curate a private **Saved Quotes (`المحفوظات`)** collection, and manage their posts and profile avatars.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Key Features
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- **Bilingual Interface (`AR / EN`) & Direction Switching (`RTL / LTR`):**
+  - Defaults to Arabic (`dir="rtl"`), with instant switching to English (`dir="ltr"`) via the navbar `AR / EN` toggle.
+  - Preserves original quote text, book titles, and author names without auto-translating user content.
+- **Persistent Light & Dark Editorial Themes:**
+  - **Light Mode:** Warm ivory (`#F8F4EC`), paper white (`#FFFEFA`), sandy beige (`#EFE5D5`), cocoa brown (`#4A3328`), espresso (`#2B1D17`), and muted gold (`#B99A68`).
+  - **Dark Mode:** Espresso night (`#211A16`), dark card (`#2C231D`), warm parchment text (`#F2E8DA`), and gold accent (`#C9A66B`).
+  - Controlled via an icon-only Sun/Moon toggle in the navbar and persisted in `localStorage` (`quoteit_theme`) with zero-flicker initialization.
+- **Two Content Types:**
+  - **Quick User Quotes (`quick`):** Concise reflections or poetry (`3–155` characters) with script-aware quotation marks (`«...»` in Arabic, `“...”` in English) and optional `— Author` attribution directly underneath.
+  - **Quotes from Books (`book`):** Collaborative book passages requiring four mandatory fields: **Book Title**, **Uploaded Book Cover Image**, **Quote Text**, and **Attributed Quote Author** (kept distinct from the platform publisher).
+- **Search, Filtering & Sorting:**
+  - Real-time database search across quote text, book title, attributed author, and platform publisher name.
+  - Filter tabs with live counts (**All Quotes**, **User Quotes**, **Book Quotes**) and sorting (**Newest First**, **Most Liked**).
+- **Likes & Private Saved Quotes (`المحفوظات`):**
+  - Scroll-stable AJAX Like/Unlike and Save/Unsave actions backed by database uniqueness constraints on `(user_id, quote_id)`.
+  - Guests clicking protected actions receive a localized **Sign in required** modal prompt.
+- **High-Resolution PNG Share Card Generator:**
+  - Available to both guests and signed-in users.
+  - Four selectable templates: **Warm Editorial**, **Quiet Paper**, **Dark Elegant**, and **Literary Magazine**.
+  - Supports **Download PNG** (`1080 × 1080` px), **Share Image via Device** (Web Share API when supported), and **Copy Quote Text** fallback.
+- **My Quotes (`اقتباساتي`) & My Account (`حسابي`):**
+  - Owner-scoped post management with type tabs, authorized editing, confirmed single-post deletion, and confirmed **Delete All My Posts** bulk deletion.
+  - Profile avatar upload (`JPG`, `PNG`, `WEBP` up to `2 MB`), live preview, safe removal, styled initials fallback, and real database statistics (published quotes and total received likes).
 
-## Learning Laravel
+---
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Technology Stack
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+| Layer | Technology |
+|---|---|
+| **Backend Framework** | PHP `^8.3`, Laravel `^13.17` |
+| **Database** | SQLite (`database/database.sqlite` in development; `:memory:` in PHPUnit tests) |
+| **Views & Templating** | Laravel Blade (`@extends`, `@yield`, reusable `<x-*>` components) |
+| **Styling & Typography** | Tailwind CSS `^4.0.0`, CSS Custom Properties, Google Fonts (`Tajawal`, `Lora`, `Inter`) |
+| **Frontend Build & Interactivity** | Vite `^8.0.0`, Vanilla ES Modules (`resources/js/app.js`, `resources/js/share-generator.js`), HTML5 Canvas API |
+| **Testing** | PHPUnit `^12.5.12` (Feature & Regression test suites) |
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+---
 
-## Agentic Development
+## Prerequisites (Windows Local Development)
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+Ensure the following tools and PHP extensions are installed and available in **Windows PowerShell**:
 
-```bash
-composer require laravel/boost --dev
+- **PHP 8.3+** with the following extensions enabled in `php.ini`:
+  - `pdo_sqlite` and `sqlite3` (required for SQLite database & tests)
+  - `gd` and `fileinfo` (required for image validation and book cover / avatar uploads)
+  - `mbstring`, `openssl`, `ctype`, `json`, `tokenizer`, `xml`
+- **Composer 2.x**
+- **Node.js 20+** and **npm 10+**
 
-php artisan boost:install
-```
+Check your environment in PowerShell:
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+```powershell
+php -v
+php -m | Select-String "sqlite|gd|fileinfo|mbstring"
+composer --version
+node -v
+npm -v

@@ -44,9 +44,14 @@ class AccountController extends Controller
         $user = $request->user();
         $file = $request->file('avatar');
 
-        $extension = strtolower($file->guessExtension() ?: $file->getClientOriginalExtension() ?: 'jpg');
-        $safeFilename = 'avatar_' . $user->id . '_' . Str::uuid()->toString() . '.' . $extension;
-        $newPath = $file->storeAs('avatars', $safeFilename, 'public');
+        if (app()->environment('production')) {
+            $mime = $file->getMimeType() ?: 'image/jpeg';
+            $newPath = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($file->getRealPath()));
+        } else {
+            $extension = strtolower($file->guessExtension() ?: $file->getClientOriginalExtension() ?: 'jpg');
+            $safeFilename = 'avatar_' . $user->id . '_' . Str::uuid()->toString() . '.' . $extension;
+            $newPath = $file->storeAs('avatars', $safeFilename, 'public');
+        }
 
         $oldPath = $user->avatar_path;
 
@@ -54,7 +59,7 @@ class AccountController extends Controller
             'avatar_path' => $newPath,
         ])->save();
 
-        if (! empty($oldPath) && Storage::disk('public')->exists($oldPath)) {
+        if (! empty($oldPath) && str_starts_with($oldPath, 'avatars/') && Storage::disk('public')->exists($oldPath)) {
             Storage::disk('public')->delete($oldPath);
         }
 
@@ -71,7 +76,7 @@ class AccountController extends Controller
         $oldPath = $user->avatar_path;
 
         if (! empty($oldPath)) {
-            if (Storage::disk('public')->exists($oldPath)) {
+            if (str_starts_with($oldPath, 'avatars/') && Storage::disk('public')->exists($oldPath)) {
                 Storage::disk('public')->delete($oldPath);
             }
 

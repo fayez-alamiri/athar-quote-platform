@@ -6,9 +6,11 @@
 @php
     $isBook = $quote->isBookQuote();
     $publisherName = $quote->user?->name ?? __('Reader');
+    $hasAttributedAuthor = filled($quote->attributed_author);
+
     $copyAuthor = $isBook
         ? ($quote->attributed_author . ($quote->book_title ? ' (' . $quote->book_title . ')' : ''))
-        : $publisherName;
+        : ($hasAttributedAuthor ? $quote->attributed_author : $publisherName);
 
     $likesCount = $quote->likes_count ?? $quote->likes()->count();
     $isLiked = auth()->check()
@@ -20,9 +22,16 @@
 
     $coverUrl = $isBook ? $quote->bookCoverUrl() : null;
 
-    // Detect if quote text is predominantly Arabic or Latin for natural reading alignment
+    // Detect if quote text is predominantly Arabic or Latin for natural reading alignment & quotation marks
     $isArabicText = preg_match('/\p{Arabic}/u', (string) $quote->quote_text) === 1;
     $quoteTextDir = $isArabicText ? 'rtl' : 'ltr';
+    $openQuoteMark = $isArabicText ? '«' : '“';
+    $closeQuoteMark = $isArabicText ? '»' : '”';
+
+    // Detect direction for quick-quote author attribution line
+    $isArabicAuthor = $hasAttributedAuthor && preg_match('/\p{Arabic}/u', (string) $quote->attributed_author) === 1;
+    $authorTextDir = $hasAttributedAuthor ? ($isArabicAuthor ? 'rtl' : $quoteTextDir) : $quoteTextDir;
+
     $deleteModalId = 'delete-quote-modal-' . $quote->id;
 @endphp
 
@@ -38,7 +47,7 @@
     data-quote-book="{{ e($quote->book_title ?? '') }}"
     data-quote-cover="{{ $coverUrl ?? '' }}"
 >
-    {{-- Top Section: Type Badge, Date & Optional Owner Controls --}}
+    {{-- Top Section: Type Badge, Date & Quote Body --}}
     <div class="space-y-4">
         <div class="flex items-center justify-between gap-2 flex-wrap">
             <div class="flex items-center gap-2">
@@ -67,13 +76,23 @@
             </time>
         </div>
 
-        {{-- Main Literary Quote Text --}}
-        <blockquote
-            dir="{{ $quoteTextDir }}"
-            class="font-editorial text-lg sm:text-xl leading-relaxed text-editorial-heading wrap-break-word whitespace-pre-line"
-        >
-            “{{ $quote->quote_text }}”
-        </blockquote>
+        {{-- Main Literary Quote Text + Immediate Author Attribution for Quick Quotes --}}
+        <div class="space-y-2.5">
+            <blockquote
+                dir="{{ $quoteTextDir }}"
+                class="font-editorial text-lg sm:text-xl leading-relaxed text-editorial-heading wrap-break-word whitespace-pre-line"
+            >{{ $openQuoteMark }}{{ $quote->quote_text }}{{ $closeQuoteMark }}</blockquote>
+
+            @if (! $isBook && $hasAttributedAuthor)
+                <p
+                    dir="{{ $authorTextDir }}"
+                    data-quick-quote-attribution="{{ $quote->id }}"
+                    class="text-sm sm:text-base font-medium text-editorial-secondary tracking-wide leading-snug"
+                >
+                    — {{ $quote->attributed_author }}
+                </p>
+            @endif
+        </div>
 
         {{-- Book Metadata Block (Only for Book Quotes) --}}
         @if ($isBook)
@@ -256,7 +275,7 @@
                 </p>
 
                 <blockquote class="p-3.5 rounded-xl bg-editorial-secondary/60 border border-editorial font-editorial text-sm text-editorial-heading line-clamp-3">
-                    “{{ $quote->quote_text }}”
+                    {{ $openQuoteMark }}{{ $quote->quote_text }}{{ $closeQuoteMark }}
                 </blockquote>
 
                 <div class="flex items-center justify-end gap-3 pt-2">

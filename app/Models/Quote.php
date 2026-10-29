@@ -90,15 +90,38 @@ class Quote extends Model
     }
 
     /**
-     * Resolve the public URL for the book cover image if present.
+     * Resolve the public URL or persistent Data URI for the book cover image if present.
      */
     public function bookCoverUrl(): ?string
     {
-        if (empty($this->book_cover_path)) {
+        $rawPath = trim((string) $this->book_cover_path);
+        if ($rawPath === '') {
             return null;
         }
 
-        return asset('storage/' . ltrim($this->book_cover_path, '/'));
+        if (str_starts_with($rawPath, 'data:image/') || preg_match('#^https?://#i', $rawPath)) {
+            return $rawPath;
+        }
+
+        $normalized = str_replace('\\', '/', $rawPath);
+        $normalized = ltrim($normalized, '/');
+        if (str_starts_with($normalized, 'public/')) {
+            $normalized = substr($normalized, strlen('public/'));
+        }
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        if (str_starts_with($normalized, 'images/') || file_exists(public_path($normalized))) {
+            return '/' . $normalized;
+        }
+
+        if (str_starts_with($normalized, 'storage/')) {
+            return '/' . $normalized;
+        }
+
+        return '/storage/' . $normalized;
     }
 
     /**
@@ -163,6 +186,7 @@ class Quote extends Model
 
     /**
      * Scope to search across quote text, book title, attributed author, and publisher name.
+     * Automatically uses ILIKE on PostgreSQL and LIKE on SQLite.
      */
     public function scopeSearch(Builder $query, ?string $term): Builder
     {
@@ -173,13 +197,14 @@ class Quote extends Model
         }
 
         $like = '%' . $clean . '%';
+        $operator = $query->getConnection()->getDriverName() === 'pgsql' ? 'ilike' : 'like';
 
-        return $query->where(function (Builder $subQuery) use ($like) {
-            $subQuery->where('quote_text', 'like', $like)
-                ->orWhere('book_title', 'like', $like)
-                ->orWhere('attributed_author', 'like', $like)
-                ->orWhereHas('user', function (Builder $userQuery) use ($like) {
-                    $userQuery->where('name', 'like', $like);
+        return $query->where(function (Builder $subQuery) use ($like, $operator) {
+            $subQuery->where('quote_text', $operator, $like)
+                ->orWhere('book_title', $operator, $like)
+                ->orWhere('attributed_author', $operator, $like)
+                ->orWhereHas('user', function (Builder $userQuery) use ($like, $operator) {
+                    $userQuery->where('name', $operator, $like);
                 });
         });
     }

@@ -14,7 +14,10 @@
                     <span>{{ __('Editorial Reading Sanctuary') }}</span>
                 </span>
 
-                <h1 class="font-editorial text-2xl sm:text-4xl font-bold text-editorial-heading leading-tight">
+                <h1
+                    class="font-editorial text-2xl sm:text-4xl font-bold text-editorial-heading leading-tight min-h-[1.25em]"
+                    data-typewriter="{{ $brandName ?? config('brand.technical_name', 'QuoteIt') }}"
+                >
                     {{ $brandName ?? config('brand.technical_name', 'QuoteIt') }}
                 </h1>
 
@@ -130,7 +133,7 @@
                         href="{{ route('home', $tabParams) }}"
                         role="tab"
                         aria-selected="{{ $isActive ? 'true' : 'false' }}"
-                        class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all {{ $isActive ? 'bg-[#4A3328] text-[#FFFEFA] dark:bg-[#C9A66B] dark:text-[#211A16] shadow-xs' : 'bg-editorial-secondary/60 text-editorial-secondary hover:text-editorial-heading' }}"
+                        class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all {{ $isActive ? 'theme-brand-pill shadow-xs' : 'bg-editorial-secondary/60 text-editorial-secondary hover:text-editorial-heading' }}"
                     >
                         <span>{{ $tabInfo['label'] }}</span>
                         <span class="px-1.5 py-0.5 rounded-md text-[11px] {{ $isActive ? 'bg-black/20 text-current' : 'bg-editorial-card text-editorial-secondary' }}">

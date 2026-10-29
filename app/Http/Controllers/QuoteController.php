@@ -51,7 +51,6 @@ class QuoteController extends Controller
 
         $quotes = $query->paginate(9)->withQueryString();
 
-        // Aggregate counts for filter tabs (scoped to current search term if active)
         $baseCountQuery = Quote::query()->search($search);
         $counts = [
             'all' => (clone $baseCountQuery)->count(),
@@ -89,7 +88,7 @@ class QuoteController extends Controller
             'quote_text' => $validated['quote_text'],
             'book_title' => null,
             'book_cover_path' => null,
-            'attributed_author' => null,
+            'attributed_author' => $validated['attributed_author'] ?? null,
         ]);
 
         return redirect()->route('home')
@@ -112,9 +111,14 @@ class QuoteController extends Controller
         $validated = $request->validated();
         $file = $request->file('book_cover');
 
-        $extension = strtolower($file->guessExtension() ?: $file->getClientOriginalExtension() ?: 'jpg');
-        $safeFilename = 'cover_' . Str::uuid()->toString() . '.' . $extension;
-        $storedPath = $file->storeAs('book-covers', $safeFilename, 'public');
+        if (app()->environment('production')) {
+            $mime = $file->getMimeType() ?: 'image/jpeg';
+            $storedPath = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($file->getRealPath()));
+        } else {
+            $extension = strtolower($file->guessExtension() ?: $file->getClientOriginalExtension() ?: 'jpg');
+            $safeFilename = 'cover_' . Str::uuid()->toString() . '.' . $extension;
+            $storedPath = $file->storeAs('book-covers', $safeFilename, 'public');
+        }
 
         Quote::create([
             'user_id' => $request->user()->id,

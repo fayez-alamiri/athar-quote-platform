@@ -33,9 +33,10 @@ class ShareQuoteGeneratorTest extends TestCase
 
         $response->assertOk();
 
-        // Share modal and canvas are rendered for guests
+        // Share modal, canvas, and inline share bootstrapper are rendered for guests
         $response->assertSee('id="share-quote-modal"', false);
         $response->assertSee('id="share-quote-canvas"', false);
+        $response->assertSee('window.__QUOTEIT_SHARE_BOOTSTRAPPED__', false);
 
         // All 4 selectable templates exist
         $response->assertSee('data-share-template="editorial"', false);
@@ -51,12 +52,13 @@ class ShareQuoteGeneratorTest extends TestCase
         // Centralized brand name is passed to the generator
         $response->assertSee('data-brand-name="' . e(config('brand.name.ar')) . '"', false);
 
-        // Both quick quote and book quote expose accurate data attributes for the PNG renderer
+        // Both quick quote and book quote expose accurate data attributes and relative same-origin cover path
         $response->assertSee('data-share-quote="' . $arabicQuickQuote->id . '"', false);
         $response->assertSee('data-quote-text="' . e($arabicQuickQuote->quote_text) . '"', false);
         $response->assertSee('data-share-quote="' . $englishBookQuote->id . '"', false);
         $response->assertSee('data-quote-book="Selected Essays"', false);
         $response->assertSee('data-quote-author="Ernest Hemingway"', false);
+        $response->assertSee('data-quote-cover="/storage/book-covers/hemingway.jpg"', false);
     }
 
     public function test_share_modal_localizes_labels_in_english_and_reflects_configured_brand_name(): void

@@ -28,7 +28,7 @@ class UpdateQuoteRequest extends FormRequest
         if ($quote && $quote->isBookQuote()) {
             return [
                 'book_title' => ['required', 'string', 'min:1', 'max:150'],
-                'book_cover' => ['nullable', 'file', 'image', 'mimes:jpeg,jpg,png,webp', 'max:4096'],
+                'book_cover' => ['nullable', 'file', 'image', 'mimes:jpeg,jpg,jfif,png,webp', 'max:4096'],
                 'quote_text' => ['required', 'string', 'min:3', 'max:1000'],
                 'attributed_author' => ['required', 'string', 'min:2', 'max:120'],
             ];
@@ -36,6 +36,7 @@ class UpdateQuoteRequest extends FormRequest
 
         return [
             'quote_text' => ['required', 'string', 'min:3', 'max:155'],
+            'attributed_author' => ['nullable', 'string', 'max:120'],
         ];
     }
 
@@ -52,7 +53,8 @@ class UpdateQuoteRequest extends FormRequest
         }
 
         if ($this->has('attributed_author')) {
-            $merged['attributed_author'] = trim((string) $this->input('attributed_author'));
+            $author = trim((string) $this->input('attributed_author'));
+            $merged['attributed_author'] = $author !== '' ? $author : null;
         }
 
         if (! empty($merged)) {
@@ -72,6 +74,7 @@ class UpdateQuoteRequest extends FormRequest
             'book_cover.max' => __('The book cover image must not exceed 4 MB.'),
             'attributed_author.required' => __('Please enter the name of the person to whom the quote is attributed.'),
             'attributed_author.min' => __('Attributed author name must be at least 2 characters.'),
+            'attributed_author.max' => __('Attributed author name must not exceed 120 characters.'),
         ];
     }
 }

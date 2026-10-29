@@ -86,11 +86,17 @@ class MyQuoteController extends Controller
 
             if ($request->hasFile('book_cover')) {
                 $file = $request->file('book_cover');
-                $extension = strtolower($file->guessExtension() ?: $file->getClientOriginalExtension() ?: 'jpg');
-                $safeFilename = 'cover_' . Str::uuid()->toString() . '.' . $extension;
-                $newCoverPath = $file->storeAs('book-covers', $safeFilename, 'public');
 
-                if (! empty($coverPath) && Storage::disk('public')->exists($coverPath)) {
+                if (app()->environment('production')) {
+                    $mime = $file->getMimeType() ?: 'image/jpeg';
+                    $newCoverPath = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($file->getRealPath()));
+                } else {
+                    $extension = strtolower($file->guessExtension() ?: $file->getClientOriginalExtension() ?: 'jpg');
+                    $safeFilename = 'cover_' . Str::uuid()->toString() . '.' . $extension;
+                    $newCoverPath = $file->storeAs('book-covers', $safeFilename, 'public');
+                }
+
+                if (! empty($coverPath) && str_starts_with($coverPath, 'book-covers/') && Storage::disk('public')->exists($coverPath)) {
                     Storage::disk('public')->delete($coverPath);
                 }
 
@@ -104,9 +110,15 @@ class MyQuoteController extends Controller
                 'book_cover_path' => $coverPath,
             ]);
         } else {
-            $quote->update([
+            $updateData = [
                 'quote_text' => $validated['quote_text'],
-            ]);
+            ];
+
+            if ($request->has('attributed_author')) {
+                $updateData['attributed_author'] = $validated['attributed_author'] ?? null;
+            }
+
+            $quote->update($updateData);
         }
 
         return redirect()->route('my-quotes.index')
@@ -126,7 +138,7 @@ class MyQuoteController extends Controller
             $quote->delete();
         });
 
-        if (! empty($coverPath) && Storage::disk('public')->exists($coverPath)) {
+        if (! empty($coverPath) && str_starts_with($coverPath, 'book-covers/') && Storage::disk('public')->exists($coverPath)) {
             Storage::disk('public')->delete($coverPath);
         }
 
@@ -152,7 +164,7 @@ class MyQuoteController extends Controller
 
         $coverPaths = $ownedQuotes
             ->pluck('book_cover_path')
-            ->filter()
+            ->filter(fn ($path) => is_string($path) && str_starts_with($path, 'book-covers/'))
             ->values()
             ->all();
 

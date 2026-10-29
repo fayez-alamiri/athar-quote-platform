@@ -53,14 +53,19 @@
                     class="w-full rounded-xl px-4 py-3 text-base font-editorial input-editorial transition-all leading-relaxed"
                 >{{ old('quote_text') }}</textarea>
 
-                <p class="text-xs text-editorial-secondary">
-                    {{ __('Your account name (:name) will be displayed as the publisher of this quote.', ['name' => auth()->user()->name]) }}
-                </p>
-
                 @error('quote_text')
                     <p class="text-xs font-medium text-red-600 dark:text-red-400" role="alert">{{ $message }}</p>
                 @enderror
             </div>
+
+            <x-input
+                name="attributed_author"
+                type="text"
+                :label="__('Attributed Quote Author') . ' (' . __('Optional') . ')'"
+                :placeholder="__('e.g., Al-Mutanabbi / Socrates (leave blank if your own thought)')"
+                :hint="__('Your account name (:name) will be displayed as the publisher of this quote.', ['name' => auth()->user()->name])"
+                maxlength="120"
+            />
 
             <div class="flex items-center justify-end gap-3 pt-4 border-t border-editorial">
                 <x-button variant="secondary" :href="route('home')">

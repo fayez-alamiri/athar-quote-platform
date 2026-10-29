@@ -1,18 +1,11 @@
 /**
  * QuoteIt — High-Resolution PNG Share Card Generator
  *
- * Features:
- *  - 4 distinct visual templates:
- *      1. 'editorial' (Warm Literary Editorial — signature ivory, paper, cocoa & muted gold)
- *      2. 'paper'     (Quiet Paper — minimalist archival double-bordered book page)
- *      3. 'dark'      (Dark Elegant — espresso night #211A16 & #2C231D with #C9A66B gold)
- *      4. 'magazine'  (Literary Magazine — cocoa masthead header, sandy beige & colophon)
- *  - Supports both Quick User Quotes ('quick') and Book Quotes ('book').
- *    Quick quotes never show an empty book-cover box; Book quotes display the book title,
- *    attributed author, platform publisher, and book cover image (with a vector fallback).
- *  - Waits for document.fonts.ready and book cover image load before rendering/exporting.
- *  - Handles Arabic RTL glyph shaping, English LTR, mixed scripts, multiline paragraphs,
- *    and automatic font scaling for long passages.
+ * Supports:
+ *  - 4 selectable templates: 'editorial', 'paper', 'dark', 'magazine'
+ *  - Quick Quotes ('quick') and Book Quotes ('book')
+ *  - Arabic RTL and English LTR multiline text wrapping & dynamic font sizing
+ *  - High-DPI 1080x1080 PNG download, Web Share API file sharing, and Copy Quote Text fallback
  */
 
 const CANVAS_SIZE = 1080;
@@ -71,7 +64,17 @@ const TEMPLATES = {
 };
 
 function isArabicScript(text) {
-    return /\p{Arabic}/u.test(text || '');
+    return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(String(text || ''));
+}
+
+function normalizeSameOriginUrl(url) {
+    if (!url) return '';
+    try {
+        const parsed = new URL(url, window.location.origin);
+        return parsed.pathname + parsed.search;
+    } catch (e) {
+        return url;
+    }
 }
 
 function drawRoundedRect(ctx, x, y, width, height, radius) {
@@ -91,15 +94,37 @@ function drawRoundedRect(ctx, x, y, width, height, radius) {
 
 function loadCoverImage(url) {
     return new Promise((resolve) => {
-        if (!url) {
+        const cleanUrl = normalizeSameOriginUrl(url);
+        if (!cleanUrl) {
             resolve(null);
             return;
         }
+
+        let settled = false;
+        const timer = setTimeout(() => {
+            if (!settled) {
+                settled = true;
+                resolve(null);
+            }
+        }, 2000);
+
         const img = new Image();
         img.crossOrigin = 'anonymous';
-        img.onload = () => resolve(img);
-        img.onerror = () => resolve(null);
-        img.src = url;
+        img.onload = () => {
+            if (!settled) {
+                settled = true;
+                clearTimeout(timer);
+                resolve(img);
+            }
+        };
+        img.onerror = () => {
+            if (!settled) {
+                settled = true;
+                clearTimeout(timer);
+                resolve(null);
+            }
+        };
+        img.src = cleanUrl;
     });
 }
 
@@ -160,7 +185,6 @@ function drawBookFallbackCover(ctx, x, y, w, h, palette) {
     ctx.strokeStyle = palette.accent;
     ctx.stroke();
 
-    // Spine line
     ctx.beginPath();
     ctx.moveTo(x + 16, y + 10);
     ctx.lineTo(x + 16, y + h - 10);
@@ -168,7 +192,6 @@ function drawBookFallbackCover(ctx, x, y, w, h, palette) {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Inner book icon
     const cx = x + w / 2 + 4;
     const cy = y + h / 2;
     ctx.strokeStyle = '#B99A68';
@@ -182,7 +205,7 @@ function drawImageCoverFit(ctx, img, x, y, w, h, radius = 14) {
     drawRoundedRect(ctx, x, y, w, h, radius);
     ctx.clip();
 
-    const imgRatio = img.width / img.height;
+    const imgRatio = (img.width || 1) / (img.height || 1);
     const boxRatio = w / h;
     let drawW = w;
     let drawH = h;
@@ -209,16 +232,16 @@ function drawImageCoverFit(ctx, img, x, y, w, h, radius = 14) {
 }
 
 export function initShareGenerator() {
+    if (window.__QUOTEIT_SHARE_BOOTSTRAPPED__) return;
+
     const modal = document.getElementById('share-quote-modal');
     const canvas = document.getElementById('share-quote-canvas');
     if (!modal || !canvas) return;
 
+    window.__QUOTEIT_SHARE_BOOTSTRAPPED__ = true;
+
     const ctx = canvas.getContext('2d');
     const loadingOverlay = document.getElementById('share-canvas-loading');
-    const downloadBtn = document.getElementById('share-download-png-btn');
-    const nativeShareBtn = document.getElementById('share-native-file-btn');
-    const copyTextBtn = document.getElementById('share-copy-text-btn');
-    const templateButtons = modal.querySelectorAll('[data-share-template]');
 
     const labels = {
         brandName: modal.getAttribute('data-brand-name') || 'QuoteIt',
@@ -228,11 +251,11 @@ export function initShareGenerator() {
         publishedBy: modal.getAttribute('data-label-published-by') || 'Published by',
         attributedTo: modal.getAttribute('data-label-attributed-to') || 'Attributed to',
         fromBook: modal.getAttribute('data-label-from-book') || 'From book',
-        msgDownloaded: modal.getAttribute('data-msg-downloaded') || 'PNG downloaded',
-        msgShared: modal.getAttribute('data-msg-shared') || 'Shared',
-        msgShareUnsupported: modal.getAttribute('data-msg-share-unsupported') || 'Direct file sharing is not supported on this browser.',
-        msgCopied: modal.getAttribute('data-msg-copied') || 'Copied',
-        msgCopyError: modal.getAttribute('data-msg-copy-error') || 'Unable to copy',
+        msgDownloaded: modal.getAttribute('data-msg-downloaded') || 'PNG image downloaded successfully.',
+        msgShared: modal.getAttribute('data-msg-shared') || 'Quote image shared successfully.',
+        msgShareUnsupported: modal.getAttribute('data-msg-share-unsupported') || 'Direct file sharing is not supported on this browser. Please use Download PNG or Copy Quote Text.',
+        msgCopied: modal.getAttribute('data-msg-copied') || 'Copied to clipboard',
+        msgCopyError: modal.getAttribute('data-msg-copy-error') || 'Unable to copy quote',
     };
 
     let activeTemplate = 'editorial';
@@ -241,7 +264,7 @@ export function initShareGenerator() {
     let cachedCoverUrl = '';
 
     function updateTemplateButtonsUI() {
-        templateButtons.forEach((btn) => {
+        modal.querySelectorAll('[data-share-template]').forEach((btn) => {
             const tpl = btn.getAttribute('data-share-template');
             const isSelected = tpl === activeTemplate;
             btn.setAttribute('aria-checked', isSelected ? 'true' : 'false');
@@ -256,28 +279,29 @@ export function initShareGenerator() {
         });
     }
 
-    async function renderShareCanvas() {
-        if (!activeQuote) return;
+    async function renderShareCanvas(skipExternalCover = false) {
+        if (!activeQuote || !ctx) return;
 
         if (loadingOverlay) loadingOverlay.classList.remove('hidden');
 
         try {
             if (document.fonts && document.fonts.ready) {
-                await document.fonts.ready;
+                await Promise.race([
+                    document.fonts.ready,
+                    new Promise((res) => setTimeout(res, 600)),
+                ]);
             }
-        } catch (e) {
-            // Continue with system fallback fonts if remote fonts fail
-        }
+        } catch (e) {}
 
         const isBook = activeQuote.type === 'book';
-        if (isBook && activeQuote.cover) {
+        if (isBook && activeQuote.cover && !skipExternalCover) {
             if (cachedCoverUrl !== activeQuote.cover) {
                 cachedCoverImg = await loadCoverImage(activeQuote.cover);
                 cachedCoverUrl = activeQuote.cover;
             }
         } else {
             cachedCoverImg = null;
-            cachedCoverUrl = '';
+            if (skipExternalCover) cachedCoverUrl = '';
         }
 
         const palette = TEMPLATES[activeTemplate] || TEMPLATES.editorial;
@@ -322,14 +346,12 @@ export function initShareGenerator() {
             ctx.stroke();
             ctx.restore();
         } else if (activeTemplate === 'magazine') {
-            // Top Editorial Masthead Band
             ctx.save();
             drawRoundedRect(ctx, cardX, cardY, cardW, 136, 32);
             ctx.fillStyle = palette.headerBg;
             ctx.fill();
             ctx.fillRect(cardX, cardY + 100, cardW, 36);
 
-            // Gold accent stripe under masthead
             ctx.fillStyle = palette.accent;
             ctx.fillRect(cardX, cardY + 132, cardW, 6);
             ctx.restore();
@@ -350,7 +372,6 @@ export function initShareGenerator() {
         ctx.font = `700 34px 'Lora', 'Tajawal', Georgia, serif`;
         ctx.fillText(labels.brandName, leftX, headerTextY);
 
-        // Type Badge on the opposite side
         const badgeLabel = isBook ? labels.bookQuote : labels.quickQuote;
         ctx.font = `700 22px 'Tajawal', 'Inter', sans-serif`;
         const badgeTextWidth = ctx.measureText(badgeLabel).width;
@@ -372,7 +393,6 @@ export function initShareGenerator() {
         ctx.fillText(badgeLabel, badgeX + badgeW / 2, badgeY + 31);
         ctx.restore();
 
-        // Subtle divider below header (except magazine which has masthead)
         if (activeTemplate !== 'magazine') {
             ctx.save();
             ctx.beginPath();
@@ -393,7 +413,7 @@ export function initShareGenerator() {
         ctx.fillText('“', quoteIsArabic ? rightX : leftX, cardY + 255);
         ctx.restore();
 
-        // 4. Calculate Available Vertical Area for Quote Text
+        // 4. Quote Text Wrapping & Vertical Centering
         const quoteTopY = cardY + 185;
         const quoteBottomY = isBook ? (CANVAS_SIZE - 365) : (CANVAS_SIZE - 210);
         const availableQuoteHeight = quoteBottomY - quoteTopY;
@@ -434,7 +454,6 @@ export function initShareGenerator() {
             }
         }
 
-        // Render Wrapped Quote Lines (Vertically centered in availableQuoteHeight)
         const totalTextHeight = wrappedLines.length * lineHeight;
         let currentLineY = quoteTopY + Math.max(chosenSize, (availableQuoteHeight - totalTextHeight) / 2 + chosenSize * 0.85);
 
@@ -455,7 +474,7 @@ export function initShareGenerator() {
         });
         ctx.restore();
 
-        // 5. Book Metadata Showcase Box (ONLY for Book Quotes)
+        // 5. Book Metadata Block (Only for Book Quotes)
         if (isBook) {
             const bookBoxY = CANVAS_SIZE - 340;
             const bookBoxH = 148;
@@ -488,13 +507,11 @@ export function initShareGenerator() {
             ctx.direction = uiIsArabic ? 'rtl' : 'ltr';
             ctx.textAlign = uiIsArabic ? 'right' : 'left';
 
-            // Book Title Line
             ctx.font = `700 25px 'Tajawal', 'Inter', sans-serif`;
             ctx.fillStyle = palette.headingText;
             const bookTitleLine = `${labels.fromBook}: ${activeQuote.book || ''}`;
             ctx.fillText(truncateSingleLine(ctx, bookTitleLine, metaMaxW), metaAnchorX, bookBoxY + 62);
 
-            // Attributed Author Line
             ctx.font = `500 23px 'Tajawal', 'Inter', sans-serif`;
             ctx.fillStyle = palette.secondaryText;
             const authorLine = `${labels.attributedTo}: ${activeQuote.author || ''}`;
@@ -502,7 +519,7 @@ export function initShareGenerator() {
             ctx.restore();
         }
 
-        // 6. Footer Row: Platform Publisher & Brand Subtitle / Colophon
+        // 6. Footer Row: Platform Publisher & Brand Wordmark
         const footerDividerY = CANVAS_SIZE - 165;
         const footerTextY = CANVAS_SIZE - 115;
 
@@ -514,7 +531,6 @@ export function initShareGenerator() {
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
-        // Publisher Attribution
         const publisherText = `${labels.publishedBy}: ${activeQuote.publisher || ''}`;
         ctx.font = `600 23px 'Tajawal', 'Inter', sans-serif`;
         ctx.fillStyle = palette.headingText;
@@ -523,7 +539,6 @@ export function initShareGenerator() {
         const pubX = uiIsArabic ? rightX : leftX;
         ctx.fillText(truncateSingleLine(ctx, publisherText, (rightX - leftX) * 0.62), pubX, footerTextY);
 
-        // Brand Mark on opposite side of footer
         ctx.font = `600 21px 'Lora', 'Tajawal', sans-serif`;
         ctx.fillStyle = palette.accent;
         ctx.direction = 'ltr';
@@ -535,67 +550,92 @@ export function initShareGenerator() {
         if (loadingOverlay) loadingOverlay.classList.add('hidden');
     }
 
-    function canvasToPngBlob() {
-        return new Promise((resolve) => {
-            if (canvas.toBlob) {
-                canvas.toBlob((blob) => resolve(blob), 'image/png', 1.0);
-            } else {
-                const dataUrl = canvas.toDataURL('image/png');
-                const byteString = atob(dataUrl.split(',')[1]);
-                const mimeString = dataUrl.split(',')[0].split(':')[1].split(';')[0];
-                const ab = new ArrayBuffer(byteString.length);
-                const ia = new Uint8Array(ab);
-                for (let i = 0; i < byteString.length; i++) {
-                    ia[i] = byteString.charCodeAt(i);
+    function extractCanvasBlob() {
+        return new Promise((resolve, reject) => {
+            try {
+                if (canvas.toBlob) {
+                    canvas.toBlob((blob) => {
+                        if (blob) resolve(blob);
+                        else reject(new Error('Empty blob'));
+                    }, 'image/png', 1.0);
+                } else {
+                    const dataUrl = canvas.toDataURL('image/png');
+                    const parts = dataUrl.split(',');
+                    const byteString = atob(parts[1]);
+                    const mimeString = parts[0].split(':')[1].split(';')[0];
+                    const ab = new ArrayBuffer(byteString.length);
+                    const ia = new Uint8Array(ab);
+                    for (let i = 0; i < byteString.length; i++) {
+                        ia[i] = byteString.charCodeAt(i);
+                    }
+                    resolve(new Blob([ab], { type: mimeString }));
                 }
-                resolve(new Blob([ab], { type: mimeString }));
+            } catch (err) {
+                reject(err);
             }
         });
     }
 
+    async function getSafePngBlob() {
+        await renderShareCanvas(false);
+        try {
+            return await extractCanvasBlob();
+        } catch (err) {
+            // If an external image tainted the canvas, re-render with vector fallback cover
+            await renderShareCanvas(true);
+            return await extractCanvasBlob();
+        }
+    }
+
     async function downloadPng() {
         if (!activeQuote) return;
-        await renderShareCanvas();
-        const blob = await canvasToPngBlob();
-        if (!blob) return;
+        try {
+            const blob = await getSafePngBlob();
+            if (!blob) return;
 
-        const filename = `quoteit-quote-${activeQuote.id || 'card'}-${activeTemplate}.png`;
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        setTimeout(() => URL.revokeObjectURL(url), 3000);
+            const filename = `quoteit-quote-${activeQuote.id || 'card'}-${activeTemplate}.png`;
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(url), 3000);
 
-        window.QuoteItUI?.showToast(labels.msgDownloaded, 'success');
+            window.QuoteItUI?.showToast(labels.msgDownloaded, 'success');
+        } catch (e) {
+            window.QuoteItUI?.showToast(labels.msgCopyError, 'error');
+        }
     }
 
     async function shareNativePng() {
         if (!activeQuote) return;
-        await renderShareCanvas();
-        const blob = await canvasToPngBlob();
-        if (!blob) return;
+        try {
+            const blob = await getSafePngBlob();
+            if (!blob) return;
 
-        const filename = `quoteit-quote-${activeQuote.id || 'card'}-${activeTemplate}.png`;
-        const file = new File([blob], filename, { type: 'image/png' });
+            const filename = `quoteit-quote-${activeQuote.id || 'card'}-${activeTemplate}.png`;
+            const file = new File([blob], filename, { type: 'image/png' });
 
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            try {
-                await navigator.share({
-                    title: labels.brandName,
-                    text: `"${activeQuote.text}"`,
-                    files: [file],
-                });
-                window.QuoteItUI?.showToast(labels.msgShared, 'success');
-                return;
-            } catch (err) {
-                if (err && err.name === 'AbortError') return;
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                try {
+                    await navigator.share({
+                        title: labels.brandName,
+                        text: `"${activeQuote.text}"`,
+                        files: [file],
+                    });
+                    window.QuoteItUI?.showToast(labels.msgShared, 'success');
+                    return;
+                } catch (err) {
+                    if (err && err.name === 'AbortError') return;
+                }
             }
-        }
 
-        window.QuoteItUI?.showToast(labels.msgShareUnsupported, 'error');
+            window.QuoteItUI?.showToast(labels.msgShareUnsupported, 'error');
+        } catch (e) {
+            window.QuoteItUI?.showToast(labels.msgShareUnsupported, 'error');
+        }
     }
 
     function copyActiveQuoteText() {
@@ -608,49 +648,59 @@ export function initShareGenerator() {
         window.QuoteItUI?.copyQuoteText(formatted, labels.msgCopied, labels.msgCopyError);
     }
 
-    // Bind template selector buttons
-    templateButtons.forEach((btn) => {
-        btn.addEventListener('click', () => {
-            activeTemplate = btn.getAttribute('data-share-template') || 'editorial';
-            updateTemplateButtonsUI();
-            renderShareCanvas();
-        });
-    });
-
-    if (downloadBtn) {
-        downloadBtn.addEventListener('click', downloadPng);
-    }
-
-    if (nativeShareBtn) {
-        nativeShareBtn.addEventListener('click', shareNativePng);
-    }
-
-    if (copyTextBtn) {
-        copyTextBtn.addEventListener('click', copyActiveQuoteText);
-    }
-
-    // Listen for clicks on any card's [data-share-quote] button
+    // Use document-level delegation so dynamic cards and modal controls always respond
     document.addEventListener('click', (e) => {
         const shareTrigger = e.target.closest('[data-share-quote]');
-        if (!shareTrigger) return;
+        if (shareTrigger) {
+            e.preventDefault();
+            e.stopPropagation();
+            const quoteId = shareTrigger.getAttribute('data-share-quote');
+            const card = shareTrigger.closest('[data-quote-card]') || document.getElementById(`quote-card-${quoteId}`);
+            if (!card) return;
 
-        e.preventDefault();
-        const quoteId = shareTrigger.getAttribute('data-share-quote');
-        const card = shareTrigger.closest('[data-quote-card]') || document.getElementById(`quote-card-${quoteId}`);
-        if (!card) return;
+            activeQuote = {
+                id: card.getAttribute('data-quote-id') || quoteId,
+                type: card.getAttribute('data-quote-type') || 'quick',
+                text: card.getAttribute('data-quote-text') || '',
+                publisher: card.getAttribute('data-quote-publisher') || '',
+                author: card.getAttribute('data-quote-author') || '',
+                book: card.getAttribute('data-quote-book') || '',
+                cover: card.getAttribute('data-quote-cover') || '',
+            };
 
-        activeQuote = {
-            id: card.getAttribute('data-quote-id') || quoteId,
-            type: card.getAttribute('data-quote-type') || 'quick',
-            text: card.getAttribute('data-quote-text') || '',
-            publisher: card.getAttribute('data-quote-publisher') || '',
-            author: card.getAttribute('data-quote-author') || '',
-            book: card.getAttribute('data-quote-book') || '',
-            cover: card.getAttribute('data-quote-cover') || '',
-        };
+            updateTemplateButtonsUI();
+            window.QuoteItUI?.openModal('share-quote-modal');
+            renderShareCanvas(false);
+            return;
+        }
 
-        updateTemplateButtonsUI();
-        window.QuoteItUI?.openModal('share-quote-modal');
-        renderShareCanvas();
+        const templateBtn = e.target.closest('[data-share-template]');
+        if (templateBtn && modal.contains(templateBtn)) {
+            e.preventDefault();
+            activeTemplate = templateBtn.getAttribute('data-share-template') || 'editorial';
+            updateTemplateButtonsUI();
+            renderShareCanvas(false);
+            return;
+        }
+
+        const dlBtn = e.target.closest('#share-download-png-btn');
+        if (dlBtn) {
+            e.preventDefault();
+            downloadPng();
+            return;
+        }
+
+        const nativeBtn = e.target.closest('#share-native-file-btn');
+        if (nativeBtn) {
+            e.preventDefault();
+            shareNativePng();
+            return;
+        }
+
+        const copyBtn = e.target.closest('#share-copy-text-btn');
+        if (copyBtn) {
+            e.preventDefault();
+            copyActiveQuoteText();
+        }
     });
 }

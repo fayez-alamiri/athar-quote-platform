@@ -93,15 +93,20 @@ class User extends Authenticatable
     }
 
     /**
-     * Resolve the public URL for the user's uploaded avatar, or null if using default avatar.
+     * Resolve the URL or Data URI for the user's uploaded avatar, or null if using default avatar.
      */
     public function avatarUrl(): ?string
     {
-        if (empty($this->avatar_path)) {
+        $raw = trim((string) $this->avatar_path);
+        if ($raw === '') {
             return null;
         }
 
-        return asset('storage/' . ltrim($this->avatar_path, '/'));
+        if (str_starts_with($raw, 'data:image/') || preg_match('#^https?://#i', $raw)) {
+            return $raw;
+        }
+
+        return '/storage/' . ltrim($raw, '/');
     }
 
     /**
