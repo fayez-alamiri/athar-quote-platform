@@ -1,4 +1,4 @@
-FROM php:8.3-cli-bookworm
+FROM php:8.4-cli-bookworm
 
 # Install system dependencies, PostgreSQL & SQLite dev libraries, GD image libraries, and Node.js 22
 RUN apt-get update && apt-get install -y \
