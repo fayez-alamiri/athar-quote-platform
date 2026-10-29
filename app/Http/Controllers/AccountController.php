@@ -18,9 +18,19 @@ class AccountController extends Controller
     {
         $user = $request->user();
 
-        $totalQuotesCount = $user->quotes()->count();
-        $quickQuotesCount = $user->quotes()->quick()->count();
-        $bookQuotesCount = $user->quotes()->book()->count();
+        // Aggregate quote totals in one query instead of three separate queries.
+        $quoteStats = $user->quotes()
+            ->selectRaw(
+                'COUNT(*) AS total_count, '
+                . 'COALESCE(SUM(CASE WHEN type = ? THEN 1 ELSE 0 END), 0) AS quick_count, '
+                . 'COALESCE(SUM(CASE WHEN type = ? THEN 1 ELSE 0 END), 0) AS book_count',
+                [\App\Models\Quote::TYPE_QUICK, \App\Models\Quote::TYPE_BOOK]
+            )
+            ->first();
+
+        $totalQuotesCount = (int) $quoteStats->total_count;
+        $quickQuotesCount = (int) $quoteStats->quick_count;
+        $bookQuotesCount = (int) $quoteStats->book_count;
         $receivedLikesCount = $user->receivedLikesCount();
         $savedQuotesCount = $user->savedQuotes()->count();
 

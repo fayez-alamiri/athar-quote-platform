@@ -51,11 +51,22 @@ class QuoteController extends Controller
 
         $quotes = $query->paginate(9)->withQueryString();
 
-        $baseCountQuery = Quote::query()->search($search);
+        // Fetch all three tab totals in one database round trip. This matters
+        // for Neon-backed deployments where each separate query has network cost.
+        $countSummary = Quote::query()
+            ->search($search)
+            ->selectRaw(
+                'COUNT(*) AS all_count, '
+                . 'COALESCE(SUM(CASE WHEN type = ? THEN 1 ELSE 0 END), 0) AS quick_count, '
+                . 'COALESCE(SUM(CASE WHEN type = ? THEN 1 ELSE 0 END), 0) AS book_count',
+                [Quote::TYPE_QUICK, Quote::TYPE_BOOK]
+            )
+            ->first();
+
         $counts = [
-            'all' => (clone $baseCountQuery)->count(),
-            'quick' => (clone $baseCountQuery)->quick()->count(),
-            'book' => (clone $baseCountQuery)->book()->count(),
+            'all' => (int) $countSummary->all_count,
+            'quick' => (int) $countSummary->quick_count,
+            'book' => (int) $countSummary->book_count,
         ];
 
         return view('quotes.index', [

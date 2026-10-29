@@ -6,7 +6,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
-use Illuminate\Support\Facades\Schema;
 
 class LocaleController extends Controller
 {
@@ -24,7 +23,9 @@ class LocaleController extends Controller
         $request->session()->put('locale', $locale);
         Cookie::queue('quoteit_locale', $locale, 60 * 24 * 365);
 
-        if (Auth::check() && Schema::hasColumn('users', 'locale')) {
+        // The profile migration guarantees this column in deployed databases.
+        // Avoid a schema-inspection query on every language switch.
+        if (Auth::check()) {
             $user = Auth::user();
             $user->forceFill(['locale' => $locale])->save();
         }

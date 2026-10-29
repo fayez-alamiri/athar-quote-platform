@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Facades\Schema;
 
 class User extends Authenticatable
 {
@@ -114,10 +113,8 @@ class User extends Authenticatable
      */
     public function receivedLikesCount(): int
     {
-        if (! Schema::hasTable('quote_likes') || ! Schema::hasTable('quotes')) {
-            return 0;
-        }
-
+        // The application startup migration ensures both tables exist. Avoid
+        // two schema-introspection queries each time the navbar renders this count.
         return QuoteLike::query()
             ->whereIn('quote_id', $this->quotes()->select('id'))
             ->count();

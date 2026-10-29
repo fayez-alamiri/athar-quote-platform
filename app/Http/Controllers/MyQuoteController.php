@@ -42,11 +42,21 @@ class MyQuoteController extends Controller
 
         $quotes = $query->paginate(9)->withQueryString();
 
-        $baseCountQuery = $user->quotes()->search($search);
+        // Retrieve all filtered tab totals with one database round trip.
+        $countSummary = $user->quotes()
+            ->search($search)
+            ->selectRaw(
+                'COUNT(*) AS all_count, '
+                . 'COALESCE(SUM(CASE WHEN type = ? THEN 1 ELSE 0 END), 0) AS quick_count, '
+                . 'COALESCE(SUM(CASE WHEN type = ? THEN 1 ELSE 0 END), 0) AS book_count',
+                [Quote::TYPE_QUICK, Quote::TYPE_BOOK]
+            )
+            ->first();
+
         $counts = [
-            'all' => (clone $baseCountQuery)->count(),
-            'quick' => (clone $baseCountQuery)->quick()->count(),
-            'book' => (clone $baseCountQuery)->book()->count(),
+            'all' => (int) $countSummary->all_count,
+            'quick' => (int) $countSummary->quick_count,
+            'book' => (int) $countSummary->book_count,
         ];
 
         $totalOwnedQuotes = $user->quotes()->count();

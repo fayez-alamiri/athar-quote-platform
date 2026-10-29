@@ -39,11 +39,22 @@ class SavedQuoteController extends Controller
 
         $quotes = $query->paginate(9)->withQueryString();
 
-        $baseSavedQuery = $user->savedQuotes()->search($search);
+        // Retrieve all filter-tab totals with one query instead of three sequential
+        // round trips to the production database.
+        $countSummary = $user->savedQuotes()
+            ->search($search)
+            ->selectRaw(
+                'COUNT(*) AS all_count, '
+                . 'COALESCE(SUM(CASE WHEN quotes.type = ? THEN 1 ELSE 0 END), 0) AS quick_count, '
+                . 'COALESCE(SUM(CASE WHEN quotes.type = ? THEN 1 ELSE 0 END), 0) AS book_count',
+                [Quote::TYPE_QUICK, Quote::TYPE_BOOK]
+            )
+            ->first();
+
         $counts = [
-            'all' => (clone $baseSavedQuery)->count(),
-            'quick' => (clone $baseSavedQuery)->where('quotes.type', Quote::TYPE_QUICK)->count(),
-            'book' => (clone $baseSavedQuery)->where('quotes.type', Quote::TYPE_BOOK)->count(),
+            'all' => (int) $countSummary->all_count,
+            'quick' => (int) $countSummary->quick_count,
+            'book' => (int) $countSummary->book_count,
         ];
 
         return view('quotes.saved', [

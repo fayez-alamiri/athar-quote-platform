@@ -2,15 +2,11 @@
 
 use Illuminate\Support\Str;
 
-$rawPgUrl = env('DB_URL', env('DATABASE_URL'));
-$normalizedPgUrl = is_string($rawPgUrl)
-    ? str_replace('-pooler.', '.', $rawPgUrl)
-    : $rawPgUrl;
-
-$rawPgHost = env('DB_HOST', '127.0.0.1');
-$normalizedPgHost = is_string($rawPgHost)
-    ? str_replace('-pooler.', '.', $rawPgHost)
-    : $rawPgHost;
+// Keep the configured PostgreSQL endpoint unchanged. Neon pooled URLs should
+// remain pooled for application traffic; docker/start.sh uses a direct endpoint
+// only for migrations when the configured URL contains a -pooler hostname.
+$postgresUrl = env('DB_URL', env('DATABASE_URL'));
+$postgresHost = env('DB_HOST', '127.0.0.1');
 
 return [
 
@@ -84,8 +80,8 @@ return [
 
         'pgsql' => [
             'driver' => 'pgsql',
-            'url' => $normalizedPgUrl,
-            'host' => $normalizedPgHost,
+            'url' => $postgresUrl,
+            'host' => $postgresHost,
             'port' => env('DB_PORT', '5432'),
             'database' => env('DB_DATABASE', 'laravel'),
             'username' => env('DB_USERNAME', 'root'),
