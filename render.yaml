@@ -4,6 +4,7 @@ services:
     runtime: docker
     plan: free
     autoDeploy: true
+    healthCheckPath: /health
     envVars:
       - key: APP_NAME
         value: ATHAR
@@ -17,15 +18,21 @@ services:
         value: "false"
       - key: LOG_CHANNEL
         value: stderr
+      - key: LOG_LEVEL
+        value: warning
       - key: DB_CONNECTION
         value: pgsql
       - key: DB_SSLMODE
         value: require
+      - key: DB_PERSISTENT
+        value: "true"
       - key: SESSION_DRIVER
-        value: database
+        value: cookie
+      - key: SESSION_LIFETIME
+        value: "120"
+      - key: SESSION_ENCRYPT
+        value: "true"
       - key: CACHE_STORE
         value: file
-      - key: APP_KEY
-        sync: false
-      - key: DB_URL
-        sync: false
+      - key: QUEUE_CONNECTION
+        value: sync
