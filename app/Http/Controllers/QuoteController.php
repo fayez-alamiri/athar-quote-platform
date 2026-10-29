@@ -5,10 +5,11 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreBookQuoteRequest;
 use App\Http\Requests\StoreQuickQuoteRequest;
 use App\Models\Quote;
+use App\Support\ImageStorage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class QuoteController extends Controller
@@ -51,22 +52,20 @@ class QuoteController extends Controller
 
         $quotes = $query->paginate(9)->withQueryString();
 
-        // Fetch all three tab totals in one database round trip. This matters
-        // for Neon-backed deployments where each separate query has network cost.
-        $countSummary = Quote::query()
+        // Single grouped query for tab counts instead of 3 separate COUNT(*) roundtrips
+        $groupedCounts = Quote::query()
             ->search($search)
-            ->selectRaw(
-                'COUNT(*) AS all_count, '
-                . 'COALESCE(SUM(CASE WHEN type = ? THEN 1 ELSE 0 END), 0) AS quick_count, '
-                . 'COALESCE(SUM(CASE WHEN type = ? THEN 1 ELSE 0 END), 0) AS book_count',
-                [Quote::TYPE_QUICK, Quote::TYPE_BOOK]
-            )
-            ->first();
+            ->select('type', DB::raw('COUNT(*) as aggregate'))
+            ->groupBy('type')
+            ->pluck('aggregate', 'type');
+
+        $quickCount = (int) ($groupedCounts[Quote::TYPE_QUICK] ?? 0);
+        $bookCount = (int) ($groupedCounts[Quote::TYPE_BOOK] ?? 0);
 
         $counts = [
-            'all' => (int) $countSummary->all_count,
-            'quick' => (int) $countSummary->quick_count,
-            'book' => (int) $countSummary->book_count,
+            'all' => $quickCount + $bookCount,
+            'quick' => $quickCount,
+            'book' => $bookCount,
         ];
 
         return view('quotes.index', [
@@ -122,14 +121,7 @@ class QuoteController extends Controller
         $validated = $request->validated();
         $file = $request->file('book_cover');
 
-        if (app()->environment('production')) {
-            $mime = $file->getMimeType() ?: 'image/jpeg';
-            $storedPath = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($file->getRealPath()));
-        } else {
-            $extension = strtolower($file->guessExtension() ?: $file->getClientOriginalExtension() ?: 'jpg');
-            $safeFilename = 'cover_' . Str::uuid()->toString() . '.' . $extension;
-            $storedPath = $file->storeAs('book-covers', $safeFilename, 'public');
-        }
+        $storedPath = ImageStorage::store($file, 'book-covers', 'cover');
 
         Quote::create([
             'user_id' => $request->user()->id,

@@ -39,22 +39,20 @@ class SavedQuoteController extends Controller
 
         $quotes = $query->paginate(9)->withQueryString();
 
-        // Retrieve all filter-tab totals with one query instead of three sequential
-        // round trips to the production database.
-        $countSummary = $user->savedQuotes()
+        // Single grouped query for saved quote tab counts
+        $groupedCounts = $user->savedQuotes()
             ->search($search)
-            ->selectRaw(
-                'COUNT(*) AS all_count, '
-                . 'COALESCE(SUM(CASE WHEN quotes.type = ? THEN 1 ELSE 0 END), 0) AS quick_count, '
-                . 'COALESCE(SUM(CASE WHEN quotes.type = ? THEN 1 ELSE 0 END), 0) AS book_count',
-                [Quote::TYPE_QUICK, Quote::TYPE_BOOK]
-            )
-            ->first();
+            ->select('quotes.type', DB::raw('COUNT(*) as aggregate'))
+            ->groupBy('quotes.type')
+            ->pluck('aggregate', 'quotes.type');
+
+        $quickCount = (int) ($groupedCounts[Quote::TYPE_QUICK] ?? 0);
+        $bookCount = (int) ($groupedCounts[Quote::TYPE_BOOK] ?? 0);
 
         $counts = [
-            'all' => (int) $countSummary->all_count,
-            'quick' => (int) $countSummary->quick_count,
-            'book' => (int) $countSummary->book_count,
+            'all' => $quickCount + $bookCount,
+            'quick' => $quickCount,
+            'book' => $bookCount,
         ];
 
         return view('quotes.saved', [
@@ -67,7 +65,6 @@ class SavedQuoteController extends Controller
 
     /**
      * Toggle saving/unsaving a quote for the authenticated user.
-     * Saving creates only a SavedQuote relationship and never duplicates the Quote record or changes ownership.
      */
     public function toggle(Request $request, Quote $quote): JsonResponse|RedirectResponse
     {

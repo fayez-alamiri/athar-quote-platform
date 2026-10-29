@@ -3,10 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\UpdateAvatarRequest;
+use App\Models\Quote;
+use App\Support\ImageStorage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class AccountController extends Controller
@@ -18,19 +19,15 @@ class AccountController extends Controller
     {
         $user = $request->user();
 
-        // Aggregate quote totals in one query instead of three separate queries.
-        $quoteStats = $user->quotes()
-            ->selectRaw(
-                'COUNT(*) AS total_count, '
-                . 'COALESCE(SUM(CASE WHEN type = ? THEN 1 ELSE 0 END), 0) AS quick_count, '
-                . 'COALESCE(SUM(CASE WHEN type = ? THEN 1 ELSE 0 END), 0) AS book_count',
-                [\App\Models\Quote::TYPE_QUICK, \App\Models\Quote::TYPE_BOOK]
-            )
-            ->first();
+        $groupedQuotes = $user->quotes()
+            ->select('type', DB::raw('COUNT(*) as aggregate'))
+            ->groupBy('type')
+            ->pluck('aggregate', 'type');
 
-        $totalQuotesCount = (int) $quoteStats->total_count;
-        $quickQuotesCount = (int) $quoteStats->quick_count;
-        $bookQuotesCount = (int) $quoteStats->book_count;
+        $quickQuotesCount = (int) ($groupedQuotes[Quote::TYPE_QUICK] ?? 0);
+        $bookQuotesCount = (int) ($groupedQuotes[Quote::TYPE_BOOK] ?? 0);
+        $totalQuotesCount = $quickQuotesCount + $bookQuotesCount;
+
         $receivedLikesCount = $user->receivedLikesCount();
         $savedQuotesCount = $user->savedQuotes()->count();
 
@@ -54,24 +51,14 @@ class AccountController extends Controller
         $user = $request->user();
         $file = $request->file('avatar');
 
-        if (app()->environment('production')) {
-            $mime = $file->getMimeType() ?: 'image/jpeg';
-            $newPath = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($file->getRealPath()));
-        } else {
-            $extension = strtolower($file->guessExtension() ?: $file->getClientOriginalExtension() ?: 'jpg');
-            $safeFilename = 'avatar_' . $user->id . '_' . Str::uuid()->toString() . '.' . $extension;
-            $newPath = $file->storeAs('avatars', $safeFilename, 'public');
-        }
-
+        $newPath = ImageStorage::store($file, 'avatars', 'avatar_' . $user->id);
         $oldPath = $user->avatar_path;
 
         $user->forceFill([
             'avatar_path' => $newPath,
         ])->save();
 
-        if (! empty($oldPath) && str_starts_with($oldPath, 'avatars/') && Storage::disk('public')->exists($oldPath)) {
-            Storage::disk('public')->delete($oldPath);
-        }
+        ImageStorage::delete($oldPath, 'avatars');
 
         return redirect()->route('account.show')
             ->with('status', __('Your profile image has been updated.'));
@@ -86,9 +73,7 @@ class AccountController extends Controller
         $oldPath = $user->avatar_path;
 
         if (! empty($oldPath)) {
-            if (str_starts_with($oldPath, 'avatars/') && Storage::disk('public')->exists($oldPath)) {
-                Storage::disk('public')->delete($oldPath);
-            }
+            ImageStorage::delete($oldPath, 'avatars');
 
             $user->forceFill([
                 'avatar_path' => null,

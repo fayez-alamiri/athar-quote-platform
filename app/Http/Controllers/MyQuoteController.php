@@ -4,12 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\UpdateQuoteRequest;
 use App\Models\Quote;
+use App\Support\ImageStorage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class MyQuoteController extends Controller
@@ -42,24 +41,22 @@ class MyQuoteController extends Controller
 
         $quotes = $query->paginate(9)->withQueryString();
 
-        // Retrieve all filtered tab totals with one database round trip.
-        $countSummary = $user->quotes()
+        $groupedCounts = $user->quotes()
             ->search($search)
-            ->selectRaw(
-                'COUNT(*) AS all_count, '
-                . 'COALESCE(SUM(CASE WHEN type = ? THEN 1 ELSE 0 END), 0) AS quick_count, '
-                . 'COALESCE(SUM(CASE WHEN type = ? THEN 1 ELSE 0 END), 0) AS book_count',
-                [Quote::TYPE_QUICK, Quote::TYPE_BOOK]
-            )
-            ->first();
+            ->select('type', DB::raw('COUNT(*) as aggregate'))
+            ->groupBy('type')
+            ->pluck('aggregate', 'type');
+
+        $quickCount = (int) ($groupedCounts[Quote::TYPE_QUICK] ?? 0);
+        $bookCount = (int) ($groupedCounts[Quote::TYPE_BOOK] ?? 0);
 
         $counts = [
-            'all' => (int) $countSummary->all_count,
-            'quick' => (int) $countSummary->quick_count,
-            'book' => (int) $countSummary->book_count,
+            'all' => $quickCount + $bookCount,
+            'quick' => $quickCount,
+            'book' => $bookCount,
         ];
 
-        $totalOwnedQuotes = $user->quotes()->count();
+        $totalOwnedQuotes = $search === '' ? $counts['all'] : $user->quotes()->count();
 
         return view('my-quotes.index', [
             'quotes' => $quotes,
@@ -96,20 +93,8 @@ class MyQuoteController extends Controller
 
             if ($request->hasFile('book_cover')) {
                 $file = $request->file('book_cover');
-
-                if (app()->environment('production')) {
-                    $mime = $file->getMimeType() ?: 'image/jpeg';
-                    $newCoverPath = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($file->getRealPath()));
-                } else {
-                    $extension = strtolower($file->guessExtension() ?: $file->getClientOriginalExtension() ?: 'jpg');
-                    $safeFilename = 'cover_' . Str::uuid()->toString() . '.' . $extension;
-                    $newCoverPath = $file->storeAs('book-covers', $safeFilename, 'public');
-                }
-
-                if (! empty($coverPath) && str_starts_with($coverPath, 'book-covers/') && Storage::disk('public')->exists($coverPath)) {
-                    Storage::disk('public')->delete($coverPath);
-                }
-
+                $newCoverPath = ImageStorage::store($file, 'book-covers', 'cover');
+                ImageStorage::delete($coverPath, 'book-covers');
                 $coverPath = $newCoverPath;
             }
 
@@ -148,9 +133,7 @@ class MyQuoteController extends Controller
             $quote->delete();
         });
 
-        if (! empty($coverPath) && str_starts_with($coverPath, 'book-covers/') && Storage::disk('public')->exists($coverPath)) {
-            Storage::disk('public')->delete($coverPath);
-        }
+        ImageStorage::delete($coverPath, 'book-covers');
 
         return redirect()->back()
             ->with('status', __('Your quote has been deleted.'));
@@ -158,7 +141,6 @@ class MyQuoteController extends Controller
 
     /**
      * Delete ALL posts owned by the currently authenticated user across both post types.
-     * Never trusts a client-supplied user ID.
      */
     public function destroyAll(Request $request): RedirectResponse
     {
@@ -174,7 +156,7 @@ class MyQuoteController extends Controller
 
         $coverPaths = $ownedQuotes
             ->pluck('book_cover_path')
-            ->filter(fn ($path) => is_string($path) && str_starts_with($path, 'book-covers/'))
+            ->filter()
             ->values()
             ->all();
 
@@ -183,9 +165,7 @@ class MyQuoteController extends Controller
         });
 
         foreach ($coverPaths as $path) {
-            if (Storage::disk('public')->exists($path)) {
-                Storage::disk('public')->delete($path);
-            }
+            ImageStorage::delete($path, 'book-covers');
         }
 
         return redirect()->route('my-quotes.index')

@@ -7,11 +7,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Cache;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
+
+    /**
+     * Request-level memoized received likes count.
+     */
+    protected ?int $memoizedReceivedLikesCount = null;
 
     /**
      * The attributes that are mass assignable.
@@ -105,18 +111,39 @@ class User extends Authenticatable
             return $raw;
         }
 
-        return '/storage/' . ltrim($raw, '/');
+        $normalized = ltrim(str_replace('\\', '/', $raw), '/');
+        if (str_starts_with($normalized, 'public/')) {
+            $normalized = substr($normalized, strlen('public/'));
+        }
+
+        if (str_starts_with($normalized, 'storage/')) {
+            return '/' . $normalized;
+        }
+
+        return '/storage/' . $normalized;
     }
 
     /**
      * Compute the real total number of likes received across all posts owned by this user.
+     * Uses a single indexed JOIN query without expensive Schema::hasTable() checks on every request.
      */
-    public function receivedLikesCount(): int
+    public function receivedLikesCount(bool $fresh = false): int
     {
-        // The application startup migration ensures both tables exist. Avoid
-        // two schema-introspection queries each time the navbar renders this count.
-        return QuoteLike::query()
-            ->whereIn('quote_id', $this->quotes()->select('id'))
-            ->count();
+        if (! $fresh && $this->memoizedReceivedLikesCount !== null) {
+            return $this->memoizedReceivedLikesCount;
+        }
+
+        try {
+            $count = QuoteLike::query()
+                ->join('quotes', 'quotes.id', '=', 'quote_likes.quote_id')
+                ->where('quotes.user_id', $this->id)
+                ->count();
+        } catch (\Throwable $e) {
+            $count = 0;
+        }
+
+        $this->memoizedReceivedLikesCount = $count;
+
+        return $count;
     }
 }

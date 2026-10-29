@@ -3,58 +3,57 @@
 namespace App\Support;
 
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ImageStorage
 {
     /**
-     * Store an uploaded image cleanly:
-     * - In testing/local environments without base64 mode, stores on public disk as expected by feature tests unless configured otherwise.
-     * - In production (Render ephemeral disk), resizes via GD and encodes as a compact WebP/JPEG data URI.
+     * Store an uploaded image file safely.
+     * - In local/testing environments: stores on the 'public' disk (storage/app/public/{directory})
+     * - In production (or when STORE_IMAGES_IN_DB=true): encodes as a persistent data URI
      */
-    public static function storeImage(UploadedFile $file, string $directory, int $maxWidth = 360, int $quality = 80): string
+    public static function store(UploadedFile $file, string $directory, string $prefix = 'img'): string
     {
-        if (! app()->environment('production')) {
-            return $file->store($directory, 'public');
+        $useDatabaseUri = app()->environment('production') || (bool) env('STORE_IMAGES_IN_DB', false);
+
+        if ($useDatabaseUri) {
+            $mime = $file->getMimeType() ?: 'image/jpeg';
+            $contents = $file->get();
+
+            return 'data:' . $mime . ';base64,' . base64_encode($contents);
         }
 
-        $realPath = $file->getRealPath();
-        $rawContents = $realPath ? @file_get_contents($realPath) : false;
+        $extension = strtolower($file->guessExtension() ?: $file->getClientOriginalExtension() ?: 'jpg');
+        $safeFilename = $prefix . '_' . Str::uuid()->toString() . '.' . $extension;
 
-        if ($rawContents !== false && function_exists('imagecreatefromstring')) {
-            $src = @imagecreatefromstring($rawContents);
-            if ($src !== false) {
-                $width = imagesx($src);
-                $height = imagesy($src);
+        return $file->storeAs(trim($directory, '/'), $safeFilename, 'public');
+    }
 
-                if ($width > $maxWidth && $width > 0) {
-                    $newWidth = $maxWidth;
-                    $newHeight = max(1, (int) round($height * ($maxWidth / $width)));
-                    $dst = imagecreatetruecolor($newWidth, $newHeight);
-                    imagealphablending($dst, false);
-                    imagesavealpha($dst, true);
-                    imagecopyresampled($dst, $src, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
-                    imagedestroy($src);
-                    $src = $dst;
-                }
+    /**
+     * Delete a previously stored image from the 'public' disk if it is a storage file path.
+     * Never deletes seeded public/images/books/* assets or data:image/* URIs.
+     */
+    public static function delete(?string $storedPath, string $expectedPrefix = ''): void
+    {
+        $path = trim((string) $storedPath);
 
-                ob_start();
-                if (function_exists('imagewebp')) {
-                    imagewebp($src, null, $quality);
-                    $mime = 'image/webp';
-                } else {
-                    imagejpeg($src, null, $quality);
-                    $mime = 'image/jpeg';
-                }
-                $compressed = ob_get_clean();
-                imagedestroy($src);
-
-                if ($compressed !== false && $compressed !== '') {
-                    return 'data:' . $mime . ';base64,' . base64_encode($compressed);
-                }
-            }
+        if ($path === '' || str_starts_with($path, 'data:image/') || preg_match('#^https?://#i', $path)) {
+            return;
         }
 
-        $mime = $file->getMimeType() ?: 'image/jpeg';
-        return 'data:' . $mime . ';base64,' . base64_encode((string) $rawContents);
+        $normalized = ltrim(str_replace('\\', '/', $path), '/');
+
+        if (str_starts_with($normalized, 'images/') || str_starts_with($normalized, 'public/images/')) {
+            return;
+        }
+
+        if ($expectedPrefix !== '' && ! str_starts_with($normalized, trim($expectedPrefix, '/') . '/')) {
+            return;
+        }
+
+        if (Storage::disk('public')->exists($normalized)) {
+            Storage::disk('public')->delete($normalized);
+        }
     }
 }

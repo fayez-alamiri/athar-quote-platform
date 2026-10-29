@@ -2,6 +2,16 @@
 
 use Illuminate\Support\Str;
 
+$rawPgUrl = env('DB_URL', env('DATABASE_URL'));
+$normalizedPgUrl = is_string($rawPgUrl)
+    ? str_replace('-pooler.', '.', $rawPgUrl)
+    : $rawPgUrl;
+
+$rawPgHost = env('DB_HOST', '127.0.0.1');
+$normalizedPgHost = is_string($rawPgHost)
+    ? str_replace('-pooler.', '.', $rawPgHost)
+    : $rawPgHost;
+
 return [
 
     'default' => env('DB_CONNECTION', 'sqlite'),
@@ -62,8 +72,8 @@ return [
 
         'pgsql' => [
             'driver' => 'pgsql',
-            'url' => env('DB_URL', env('DATABASE_URL')),
-            'host' => env('DB_HOST', '127.0.0.1'),
+            'url' => $normalizedPgUrl,
+            'host' => $normalizedPgHost,
             'port' => env('DB_PORT', '5432'),
             'database' => env('DB_DATABASE', 'laravel'),
             'username' => env('DB_USERNAME', 'root'),
@@ -73,11 +83,9 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
-            'connect_timeout' => (int) env('DB_CONNECT_TIMEOUT', 10),
             'options' => extension_loaded('pdo_pgsql') ? [
-                PDO::ATTR_PERSISTENT => filter_var(env('DB_PERSISTENT', false), FILTER_VALIDATE_BOOLEAN),
-                PDO::ATTR_EMULATE_PREPARES => true,
-                PDO::ATTR_TIMEOUT => (int) env('DB_CONNECT_TIMEOUT', 10),
+                PDO::ATTR_PERSISTENT => (bool) env('DB_PERSISTENT', true),
+                PDO::ATTR_TIMEOUT => 10,
             ] : [],
         ],
 
